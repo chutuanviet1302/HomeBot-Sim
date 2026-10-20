@@ -1,0 +1,30 @@
+# ACT baseline (LeRobot) on the HomeBot can dataset - run on Kaggle (1x T4).
+# lerobot-train --config_path configs/act.yaml   (LeRobot >= 0.3 CLI; adjust keys for older versions)
+dataset:
+  repo_id: local/homebot_can        # upload data/homebot_can as a Kaggle Dataset / HF dataset
+  root: /kaggle/input/homebot-can
+policy:
+  type: act
+  chunk_size: 25                    # 1 s at 25 fps
+  n_action_steps: 25
+  vision_backbone: resnet18
+  dim_model: 256
+  n_encoder_layers: 4
+  n_decoder_layers: 1
+  use_vae: true
+  kl_weight: 10.0
+  input_features:
+    observation.images.head: {type: VISUAL, shape: [3, 224, 224]}
+    observation.images.wrist: {type: VISUAL, shape: [3, 224, 224]}
+    observation.state: {type: STATE, shape: [44]}
+  output_features:
+    action: {type: ACTION, shape: [17]}
+  device: cuda
+batch_size: 32
+steps: 40000
+save_freq: 5000
+num_workers: 4
+optimizer:
+  lr: 1.0e-5
+  weight_decay: 1.0e-4
+output_dir: /kaggle/working/act_homebot
