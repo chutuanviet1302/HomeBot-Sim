@@ -88,7 +88,8 @@ PLACES = {
     "toy_box": {"pos": (2.6, 4.9), "yaw": np.pi / 2, "pre": (2.6, 4.3)},
 }
 CUP_HOME = np.array([6.5, 3.52])           # nominal cup xy on the table
-SINK_CENTER = np.array([7.0, 5.60])         # sink basin centre (recessed into the counter, near its front edge)
+SINK_CENTER = np.array([7.0, 5.60])         # default sink basin centre (recessed into the counter, near its front edge);
+                                            # the robot finds the basin with its camera (Perception.locate_basin)
 SINK_HALF = np.array([0.20, 0.13])          # inner half size of the basin opening
 SINK_DEPTH = 0.18
 # blind spots: people can step out from behind the partition here, the LiDAR sees them only ~0.8 m away
@@ -236,12 +237,12 @@ PROXY_ROBOT = """
 """
 
 
-def _counter_with_sink(it: Item) -> list[str]:
+def _counter_with_sink(it: Item, sink_center=None) -> list[str]:
     """Kitchen counter with a real recessed sink basin: a lower block up to the basin floor and four top slabs
     around the opening (objects dropped into the sink fall in and stay there)."""
     (cx, cy), (hx, hy) = it.pos, it.size
     x0, x1, y0, y1 = cx - hx, cx + hx, cy - hy, cy + hy
-    (sx, sy), (shx, shy) = SINK_CENTER, SINK_HALF
+    (sx, sy), (shx, shy) = (SINK_CENTER if sink_center is None else sink_center), SINK_HALF
     floor = COUNTER_TOP - SINK_DEPTH
     out = []
 
@@ -260,12 +261,12 @@ def _counter_with_sink(it: Item) -> list[str]:
 
 
 def build_mjcf(items: list[Item], cup_type="ycb_can", cup_rgba="0.9 0.9 0.95 1",
-               with_toy=False, proxy_robot=True) -> str:
+               with_toy=False, proxy_robot=True, sink_center=None) -> str:
     geoms = []
     for it in items:
         z = it.h / 2
         if it.name == "counter":
-            geoms += _counter_with_sink(it)
+            geoms += _counter_with_sink(it, sink_center)
             continue
         if it.kind == "box":
             q = f'{np.cos(it.yaw/2):.5f} 0 0 {np.sin(it.yaw/2):.5f}'

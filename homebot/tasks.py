@@ -47,6 +47,11 @@ class TaskRunner:
                     self.env.wrist_pos = CARRY_HIGH.copy()
                 goal = place.get("pre", place["pos"])
                 ok = self.nav.go(goal, self.timeout_nav, carrying=carrying, tol=0.15)["success"]
+                if ok:
+                    # face the work place (the table / counter of the semantic map), so the camera sees it
+                    x, y, _ = self.env.pose
+                    tx, ty = place["pos"]
+                    self.nav.turn_to(float(np.arctan2(ty - y, tx - x)), max_t=6.0, carrying=carrying)
             elif state == "MANIPULATE":
                 ok = getattr(self.policy, arg)()
                 if ok:

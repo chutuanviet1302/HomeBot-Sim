@@ -42,9 +42,12 @@ def make_policy(name, env, rng, host="localhost"):
 
 
 def run_one(args):
-    skill, seed, policy, host = args
+    skill, seed, policy, host, sink_range = args
     rng = np.random.default_rng(50_000 + seed)
-    env = HomeEnv(level=1, seed=seed)
+    # generalisation test: the sink moved along the counter (the robot still starts at the usual spot and has to
+    # find the basin with its camera)
+    sink_off = float(np.random.default_rng(90_000 + seed).uniform(-sink_range, sink_range)) if sink_range else 0.0
+    env = HomeEnv(level=1, seed=seed, sink_offset=sink_off)
     start = perturbed("table" if skill == "pick" else "sink", rng)
     if skill == "place":
         # the carried object is ~25 cm ahead of the pelvis: start 12 cm further back so that a +10 cm
@@ -67,7 +70,8 @@ def run_one(args):
             "perception_err_mm": st.get("perc_err_mm", float("nan")),
             "align_tries": st.get("align_tries", 0), "not_seen": st.get("not_seen", 0),
             "unreachable": st.get("unreachable", 0), "not_seen_info": st.get("not_seen_info", ""),
-            "cup_dropped": bool(cup_z < 0.5),
+            "cup_dropped": bool(cup_z < 0.5), "sink_offset": round(sink_off, 3),
+            "basin_err_mm": st.get("basin_err_mm", float("nan")), "sink_not_seen": st.get("sink_not_seen", 0),
             "dx": round(start[0] - apt.PLACES["table" if skill == "pick" else "sink"]["pos"][0], 3),
             "dyaw_deg": round(float(np.rad2deg(start[2] - apt.PLACES["table" if skill == "pick" else "sink"]["yaw"])), 1)}
 
@@ -119,8 +123,10 @@ def main():
     ap.add_argument("--workers", type=int, default=3)   # ~600 MB per G1 + Inspire environment
     ap.add_argument("--out", default=None)
     ap.add_argument("--skills", nargs="+", default=["pick", "place"])
+    ap.add_argument("--sink-range", type=float, default=0.0,
+                    help="move the sink along the counter by up to +-this (m) per trial (generalisation test)")
     a = ap.parse_args()
-    jobs = [(sk, s, a.policy, a.host) for sk in a.skills for s in range(a.n)]
+    jobs = [(sk, s, a.policy, a.host, a.sink_range) for sk in a.skills for s in range(a.n)]
     workers = min(a.workers, 3) if a.policy == "expert" else 1     # ~600 MB per G1 + Inspire env
     rows = []
     # fresh worker processes every few trials: each trial builds a G1 model, a walking policy and renderers

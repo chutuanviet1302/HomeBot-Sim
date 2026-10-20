@@ -14,7 +14,7 @@ import numpy as np
 
 from . import apartment as apt
 from . import g1 as g1mod
-from .env import CARRY_DEFAULT, CARRY_HIGH, CTRL_DT, mat_to_quat, quat_to_mat, yaw_quat
+from .env import CARRY_APPROACH, CARRY_DEFAULT, CARRY_HIGH, CTRL_DT, mat_to_quat, quat_to_mat, yaw_quat
 
 # object centre relative to the palm site in the closed handshake grasp (hand frame: x fingers, y palm normal,
 # z thumb side): centre of the most robust region found by scripts/grasp_search.py (results/grasp_search.csv):
@@ -101,7 +101,7 @@ class Expert:
             self.rec.add(self.env, self._action())
         self.env.step(np.zeros(3), carrying=self.env.grasped)
 
-    def align(self, obj_w, rel=OBJ_IN_BASE, timeout=12.0, refine=None):
+    def align(self, obj_w, rel=OBJ_IN_BASE, timeout=12.0, refine=None, face=None):
         """Step (walking policy) until the perceived object sits at `rel` in the pelvis frame, facing it.
         `refine()` (optional) returns an updated object estimate; it is called every 0.5 s while stepping."""
         e = self.env
@@ -121,7 +121,8 @@ class Expert:
                                                  # the loop); convergence is judged on the low-passed error below
             # heading such that the object is seen under the angle of `rel`, then position
             d = np.asarray(obj_w[:2]) - [x, y]
-            yaw_t = np.arctan2(d[1], d[0]) - np.arctan2(rel[1], rel[0])
+            # `face`: fixed heading (square to a counter edge); otherwise the object decides the heading
+            yaw_t = face if face is not None else np.arctan2(d[1], d[0]) - np.arctan2(rel[1], rel[0])
             c, s_ = np.cos(yaw_t), np.sin(yaw_t)
             base_t = np.asarray(obj_w[:2]) - np.array([c * rel[0] - s_ * rel[1], s_ * rel[0] + c * rel[1]])
             e_w = base_t - [x, y]
@@ -143,7 +144,7 @@ class Expert:
             e.step(cmd, carrying=e.grasped)
         return False
 
-    def align_and_stand(self, rel, target_w=None, tries=4, tol=0.07):
+    def align_and_stand(self, rel, target_w=None, tries=4, tol=0.07, face=None):
         """ALIGN on the perceived object, then stand still; if the stance drifted away while locking (> `tol`),
         step again. Returns True once standing with the object where the hand works."""
         e = self.env
@@ -157,7 +158,7 @@ class Expert:
                 if obj is None:                            # not seen from here: the map's usual spot
                     obj = np.array([*apt.CUP_HOME, apt.TABLE_TOP + e.cup_h / 2])
                 refine = self.perceive_object
-            self.align(obj, rel, refine=refine)
+            self.align(obj, rel, refine=refine, face=face)
             if not self.stand():
                 continue
             if refine is not None:
@@ -324,6 +325,58 @@ class Expert:
             return None
         return est if rotation else est[0]
 
+    def perceive_basin(self, frames=3, scan=True):
+        """Sink basin from the head camera (rim rectangle); without perception: the true basin with noise."""
+        e = self.env
+        if e.perception is None:
+            from .perception import Basin
+            return Basin(np.r_[e.sink_center + self.rng.normal(0, OBJ_NOISE, 2), apt.COUNTER_TOP],
+                         apt.SINK_HALF.copy(), 0.0, apt.SINK_DEPTH, 0)
+        basin = e.perception.locate_basin(frames=frames)
+        if basin is not None or not scan:
+            return basin
+        # not (fully) in view: look around - turn in place in steps of ~30 deg (left up to 170 deg, then right),
+        # looking again after every step (no prior on where the sink is)
+        yaw0 = e.pose[2]
+        for d in (0.5, 1.0, 1.5, 2.0, 2.5, 3.0, -0.5, -1.0, -1.5, -2.0, -2.5):
+            self._turn_to(yaw0 + d)
+            basin = e.perception.locate_basin(frames=frames)
+            if basin is not None:
+                e.stats["basin_scans"] = e.stats.get("basin_scans", 0) + 1
+                return basin
+        return None
+
+    def _turn_to(self, yaw, tol=0.05, max_t=6.0):
+        """Turn in place (walking policy) to `yaw`, gently (an object may be in the hand)."""
+        e = self.env
+        e.stand_mode = False
+        t0 = e.t
+        while e.t - t0 < max_t:
+            err = (yaw - e.pose[2] + np.pi) % (2 * np.pi) - np.pi
+            if abs(err) < tol:
+                break
+            if self.rec is not None:
+                self.rec.add(e, self._action())
+            e.step(np.array([0.0, 0.0, np.clip(1.5 * err, -0.35, 0.35)]), carrying=e.grasped)
+
+    def _near_axis(self, basin):
+        """Unit vector from the basin centre towards the robot, along the basin axis that faces the robot."""
+        u, v = _basin_frame(basin)
+        to_robot = self.env.pose[:2] - basin.center[:2]
+        near = v if abs(to_robot @ v) >= abs(to_robot @ u) else u
+        return near * np.sign(to_robot @ near)
+
+    def _drop_point(self, basin, jitter):
+        """Where the object is released: over the half of the opening nearer the robot (the robot cannot lean
+        over the counter), a few cm of random spread, object bottom 4 cm above the rim."""
+        e = self.env
+        u, v = _basin_frame(basin)
+        near = self._near_axis(basin)
+        room = np.maximum(basin.half - e.cup_r - 0.04, 0.0)            # keep the object clear of the rim
+        spread = np.clip(0.03 * jitter, -room, room)
+        xy = basin.center[:2] + near * min(0.03, float(room.min())) + spread[0] * u + spread[1] * v
+        return np.array([*xy, basin.center[2] + e.cup_h / 2 + 0.04])
+
     def object_in_hand(self):
         """Pose (centre, rotation) of the held object in the world: perception estimate (6D, head camera) when
         available, otherwise the simulator pose with perception-like noise."""
@@ -403,15 +456,33 @@ class Expert:
         """Drop the held object into the sink: ALIGN on the basin, hand over the opening (object bottom a few cm
         above the rim), open the hand, retract."""
         e = self.env
-        if target_world is None:
-            # front half of the basin (the robot cannot lean over the counter), object bottom 4 cm above the rim
-            target_world = np.array([*(apt.SINK_CENTER + [0, -0.03] + self.rng.uniform(-0.03, 0.03, 2)),
-                                     apt.COUNTER_TOP + e.cup_h / 2 + 0.04])
         if not e.grasped:
             return False
-        if not self.align_and_stand(DROP_IN_BASE, target_world) or not e.grasped:
+        jitter = self.rng.uniform(-1.0, 1.0, 2)
+        if target_world is None:
+            basin = self.perceive_basin()
+            if basin is None:
+                e.stats["sink_not_seen"] = e.stats.get("sink_not_seen", 0) + 1
+                return False
+            target_world = self._drop_point(basin, jitter)
+            u, v = _basin_frame(basin)
+            near = self._near_axis(basin)
+            face = float(np.arctan2(-near[1], -near[0]))       # stand square to the counter edge, facing it
+        else:
+            basin, face = None, None
+        # carry the object higher for the last steps to the counter: sway + the grip settling over a long carry
+        # can bring it down onto the counter edge
+        e.wrist_pos = CARRY_APPROACH.copy()
+        self.wait(0.6)
+        if not self.align_and_stand(DROP_IN_BASE, target_world, face=face) or not e.grasped:
             e.stand_mode = False
             return False
+        if basin is not None:                            # closer now: look again
+            again = self.perceive_basin(scan=False)
+            if again is not None:
+                basin = again
+                target_world = self._drop_point(basin, jitter)
+            e.stats["basin_err_mm"] = round(1000 * float(np.linalg.norm(basin.center[:2] - e.sink_center)), 1)
         # where the object sits in the closed hand (6D estimate), so that the object - not the palm - ends up
         # over the basin
         hp, hq = e.hand_world()
@@ -428,6 +499,11 @@ class Expert:
         self.to_carry()
         self.wait(0.4)
         return place_success(e)
+
+
+def _basin_frame(basin):
+    c, s = np.cos(basin.yaw), np.sin(basin.yaw)
+    return np.array([c, s]), np.array([-s, c])
 
 
 def upright_correction(a, max_angle=np.deg2rad(50)):
@@ -448,7 +524,7 @@ def upright_correction(a, max_angle=np.deg2rad(50)):
 def place_success(env):
     """The object lies inside the sink basin (below the rim, within the opening) and the hand let go."""
     cp, _ = env.cup_pose()
-    in_xy = np.all(np.abs(cp[:2] - apt.SINK_CENTER) <= apt.SINK_HALF)
+    in_xy = np.all(np.abs(cp[:2] - env.sink_center) <= apt.SINK_HALF)       # ground truth (evaluation only)
     in_basin = cp[2] < apt.COUNTER_TOP
     thumb, other, _ = env.cup_contacts()
     return bool(in_xy and in_basin and not (thumb or other))

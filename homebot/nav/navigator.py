@@ -215,14 +215,15 @@ class Navigator:
         p = np.array([x, y]) + v * 0.5
         return np.linalg.norm(self.pts - p, axis=1).min() - apt.ROBOT_RADIUS
 
-    def turn_to(self, yaw, tol=0.06, max_t=8.0):
+    def turn_to(self, yaw, tol=0.06, max_t=8.0, carrying=False):
         t0 = self.env.t
+        wmax = 0.35 if carrying else 0.6                 # gentle with an object in the hand
         while self.env.t - t0 < max_t:
             err = (yaw - self.env.pose[2] + np.pi) % (2 * np.pi) - np.pi
             if abs(err) < tol and abs(self.env.vel_body()[2]) < 0.08:
                 return True
-            cmd = np.array([0.0, 0.0, np.clip(1.5 * err, -0.6, 0.6)])
-            self.env.step(cmd)
+            cmd = np.array([0.0, 0.0, np.clip(1.5 * err, -wmax, wmax)])
+            self.env.step(cmd, carrying)
         return False
 
     def straight_to(self, xy, timeout=30.0, carrying=False, tol=0.04, speed=0.2):
