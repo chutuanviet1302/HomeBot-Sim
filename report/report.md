@@ -60,8 +60,16 @@ lòng bồn và tay đã nhả.
 
 ### E3 — Toàn bộ nhiệm vụ có người đi lại (30 lượt, mức 2)
 
-> Số liệu dưới đây là của phiên bản *trước* giai đoạn 1 (bồn lấy từ bản đồ). E3 với code mới nhất (bồn do camera
-> tìm, giữ tay cố định khi mang) đang được chạy lại, cả với bồn ở chỗ cũ và bồn bị dời.
+**Code mới nhất** (bồn do camera tìm, giữ tay cố định khi mang):
+
+| Điều kiện | Thành công | Thời gian TB (s) | Sai số bồn (trung vị / lớn nhất) | Lần chạm người (robot đang đi) | Ngã | Dừng tay |
+|---|---|---|---|---|---|---|
+| Bồn ở chỗ cũ | **29/30 (97%)** | 181 | 1,7 / 2,5 mm | 10 (5) | 0 | 6 |
+| Bồn bị dời dọc quầy tới ±24 cm | **28/30 (93%)** | 188 | 1,8 / 2,3 mm | 12 (7) | 0 | 2 |
+
+Mọi lượt hỏng còn lại là hết giờ (180 s) trên đường tới bồn; không lượt nào làm rơi lon.
+
+Số liệu dưới đây là của phiên bản *trước* giai đoạn 1 (bồn lấy từ bản đồ, tay đuổi theo thân khi mang):
 
 Lệnh *"bring the can to the sink"*: robot xuất phát ngẫu nhiên ở phòng khách, đi tới bàn ăn, tìm và gắp lon, mang
 sang bếp, thả vào bồn. Ghế dịch ngẫu nhiên, một người đi lại suốt lượt, giới hạn 180 s cho mỗi chặng điều hướng.

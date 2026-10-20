@@ -18,11 +18,13 @@ simulator state.
 | E2 pick, 50 runs (start +-10 cm / +-15 deg) | **50/50**, object pose error median 1.7 mm, 0 arm contacts |
 | E2 drop into the sink (basin found by the camera), 50 runs | **50/50**, basin error median 1.2 mm (max 3.3 mm), 6 arm stops (light contacts) |
 | E2 drop, sink moved along the counter by up to +-24 cm (not told to the robot), 50 runs | **50/50**, basin error median 1.2 mm (max 2.7 mm) |
-| E3 full task with a person, 30 runs | being re-run with the latest code (sink perception + steady carry); with the previous code (sink from the map): 26/30 |
+| E3 full task with a person, 30 runs | **29/30 (97%)**, 181 s on average, basin error median 1.7 mm, 0 falls |
+| E3 with the sink moved by up to +-24 cm, 30 runs | **28/30 (93%)**, basin error median 1.8 mm, 0 falls |
 | Dataset | 60 LeRobot v2.1 episodes (30 pick, 30 drop; generated before the sink perception) |
 
-Open issue: the held can creeps slowly in the hand while the robot walks (gait vibration); holding the arm still
-relative to the body during the carry (below) cut the creep about 3x (`scripts/carry_bench.py`).
+All E3 failures left are navigation time-outs on the way to the sink (180 s). The held can still creeps slowly in
+the hand while the robot walks (gait vibration); holding the arm still relative to the body during the carry
+(below) cut the creep about 3x (`scripts/carry_bench.py`) and no E3 run lost the can.
 
 ## Demo
 
