@@ -20,6 +20,7 @@ ARM_SWING_MAX = 0.30       # rad
 POSE_NOISE = 0.02       # m, Gaussian noise on the robot pose given to the planner
 CARRY_DEFAULT = np.array([0.25, -0.20, 0.95])   # palm rest pose in the robot frame (empty hand)
 CARRY_HIGH = np.array([0.25, -0.20, 1.03])      # palm pose while carrying: the held cup clears the 0.90 m counter
+CARRY_APPROACH = np.array([0.30, -0.25, 1.08])  # last steps to the counter: the held object clears its edge
 
 
 def yaw_quat(th):
@@ -196,7 +197,7 @@ class HomeEnv:
     """
 
     def __init__(self, level=1, seed=0, cup_type=None, with_toy=False, limits: VelLimits | None = None,
-                 render=False, perception=True, relaxed_arms=True):
+                 render=False, perception=True, relaxed_arms=True, sink_offset=0.0):
         self.level = level
         self.relaxed_arms = relaxed_arms      # walk with hanging, swinging arms; the hand gets ready when it works
         self.use_perception = perception      # object poses from the head RGB-D camera (homebot/perception.py)
@@ -206,8 +207,10 @@ class HomeEnv:
         self.items = apt.randomize_layout(self.rng)
         self.cup_type = cup_type or self.rng.choice(list(apt.CUP_TYPES))
         col = self.rng.uniform(0.2, 0.95, 3)
+        # ground truth of the sink (scene construction and success checks only; the robot perceives the basin)
+        self.sink_center = apt.SINK_CENTER + np.array([sink_offset, 0.0])
         xml = apt.build_mjcf(self.items, self.cup_type, f"{col[0]:.2f} {col[1]:.2f} {col[2]:.2f} 1", with_toy,
-                             proxy_robot=False)
+                             proxy_robot=False, sink_center=self.sink_center)
         spec = mujoco.MjSpec.from_string(xml)
         g1mod.build_spec(spec)
         self.m = spec.compile()
@@ -254,6 +257,7 @@ class HomeEnv:
         self.hand_goal_world = None
         self.arm_q_goal = None
         self.arm_relaxed = relaxed_arms
+        self._carry_key, self._carry_q = None, None
         self.ik_err = 0.0
         self.stats = {}
         jq = lambda n: self.m.jnt_qposadr[self.m.joint(n).id]
@@ -280,6 +284,7 @@ class HomeEnv:
             self._perception.reset()
         self.walker.place(*start_pose)
         self.arm_relaxed = self.relaxed_arms and not arm_ready
+        self._carry_key, self._carry_q = None, None
         self.ctrl.set_ready(self.d, relaxed=self.arm_relaxed)
         self.hip_mean = self.d.qpos[self.hip_q].copy()
         self.pose = np.array(start_pose, float)
@@ -460,6 +465,17 @@ class HomeEnv:
         elif self.arm_relaxed:                   # walking with an empty hand: arm hanging, swinging
             self.ctrl.q_tgt = self.ctrl.q_tgt + np.clip(self.ctrl.r_rest + swing_r - self.ctrl.q_tgt,
                                                         -self.ctrl.max_dq, self.ctrl.max_dq)
+        elif carrying and self.hand_goal_world is None:
+            # carrying: the arm is held still relative to the body (joints solved once for the carry pose).
+            # Chasing the swaying, bobbing pelvis with IK made the arm servos resonate (hand bobbing 3-5 cm)
+            # and the object crept out of the grip
+            key = tuple(np.round(np.r_[self.wrist_pos, self.wrist_quat], 4))
+            if self._carry_key != key:
+                p_w, R_w = self.hand_target_world()
+                self._carry_q, self.ik_err = self.ctrl.solve_best(self.d, p_w, R_w)
+                self._carry_key = key
+            self.ctrl.q_tgt = self.ctrl.q_tgt + np.clip(self._carry_q - self.ctrl.q_tgt, -self.ctrl.max_dq,
+                                                        self.ctrl.max_dq)
         else:
             p_w, R_w = self.hand_target_world()
             self.ik_err = self.ctrl.ik(self.d, p_w, R_w)

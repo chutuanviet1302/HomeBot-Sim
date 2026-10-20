@@ -13,6 +13,8 @@ own kinematics (no simulator segmentation, no object state).
    axis centre, half height); it is initialised upright on the plane at several yaw angles.
 4. Tracking: a Kalman filter per object (position, random-walk model: objects rest until moved) with
    nearest-neighbour gating, track IDs, confirmation after 2 hits and deletion after missed frames.
+5. Receptacles: a sink basin is found as a hole in a horizontal support plane with surface points below it
+   (a depression, not an occlusion); its rim is fitted as a rectangle (centre, size, orientation, depth).
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ from pathlib import Path
 
 import mujoco
 import numpy as np
-from scipy.ndimage import label as cc_label
+from scipy.ndimage import binary_closing, binary_dilation, binary_fill_holes, label as cc_label
 from scipy.spatial import cKDTree
 
 from . import apartment as apt
@@ -111,6 +113,21 @@ class Detection:
     @property
     def quat(self):
         return mat_to_quat(self.R)
+
+
+@dataclass
+class Basin:
+    center: np.ndarray                  # centre of the opening at rim height (world)
+    half: np.ndarray                    # half size of the opening along (axis u, axis v)
+    yaw: float                          # direction of axis u (long side)
+    depth: float                        # rim height - lowest visible floor
+    n_below: int                        # points seen inside the depression
+
+    def contains(self, p, margin=0.0):
+        c, s = np.cos(self.yaw), np.sin(self.yaw)
+        d = np.asarray(p)[:2] - self.center[:2]
+        uv = np.array([c * d[0] + s * d[1], -s * d[0] + c * d[1]])
+        return bool(np.all(np.abs(uv) <= self.half - margin))
 
 
 # ----------------------------------------------------------------------------- tracker
@@ -342,6 +359,89 @@ class Perception:
             return None
         name, R, t, e = best
         return Detection(name, t, R, e, len(c), (0, 0, 0, 0))
+
+    # -------------------------------------------------------------- receptacles
+    def detect_basin(self, cell=0.02, min_side=0.12, max_side=0.8):
+        """Sink basins in view: holes in a horizontal support plane with points below it."""
+        _, depth = self._render()
+        pts, pix = self._cloud(depth)
+        pts, _ = self._self_filter(pts, pix)
+        sub = pts[::3]
+        found = []
+        for _ in range(3):
+            plane = self._support_plane(sub, self.rng)
+            if plane is None or len(plane[1]) < 150:
+                break
+            z0, inl_sub = plane
+            inl = pts[np.abs(pts[:, 2] - z0) < 0.008]
+            found += self._basins_in(pts, z0, inl, cell, min_side, max_side)
+            sub = sub[np.abs(sub[:, 2] - z0) > 0.02]
+        self.last_basins = found
+        return found
+
+    @staticmethod
+    def _basins_in(pts, z0, inl, cell, min_side, max_side):
+        lo = inl[:, :2].min(0) - 2 * cell
+        ij = np.floor((inl[:, :2] - lo) / cell).astype(int)
+        mask = np.zeros(ij.max(0) + 3, bool)
+        mask[ij[:, 0], ij[:, 1]] = True
+        mask = binary_closing(mask, np.ones((3, 3)))            # sparse sampling far away
+        holes = binary_fill_holes(mask) & ~mask                  # enclosed by the plane on every side
+        lab, n = cc_label(holes)
+        below = pts[(pts[:, 2] < z0 - 0.03) & (pts[:, 2] > z0 - 0.5)]
+        bij = np.floor((below[:, :2] - lo) / cell).astype(int)
+        okb = np.all((bij >= 0) & (bij < np.array(mask.shape)), 1)
+        out = []
+        for k in range(1, n + 1):
+            cells = np.argwhere(lab == k)
+            # surface below the plane inside the hole or right at its rim (from far away only the far inner
+            # wall of a basin is visible, and it lies on the rim line)
+            near_hole = binary_dilation(lab == k, np.ones((3, 3)))
+            inside = okb.copy()
+            inside[okb] = near_hole[bij[okb, 0], bij[okb, 1]]
+            if len(cells) < (min_side / cell) ** 2 or inside.sum() < 30:
+                continue                                         # too small, or nothing below: an occlusion
+            xy = lo + (cells + 0.5) * cell
+            c0 = xy.mean(0)
+            w, V = np.linalg.eigh(np.cov((xy - c0).T))
+            u = V[:, 1]                                          # long side
+            yaw = float(np.arctan2(u[1], u[0]))
+            R = np.array([[np.cos(yaw), np.sin(yaw)], [-np.sin(yaw), np.cos(yaw)]])
+            huv = (xy - c0) @ R.T
+            lo_uv, hi_uv = huv.min(0) - cell / 2, huv.max(0) + cell / 2
+            # refine every edge on the rim: the nearest counter-top point beyond the hole, within its span
+            iuv = (inl[:, :2] - c0) @ R.T
+            for a in (0, 1):
+                b = 1 - a
+                span = (iuv[:, b] > lo_uv[b] + cell) & (iuv[:, b] < hi_uv[b] - cell)
+                lo_side = iuv[span & (iuv[:, a] < lo_uv[a] + 1.5 * cell) & (iuv[:, a] > lo_uv[a] - 3 * cell), a]
+                hi_side = iuv[span & (iuv[:, a] > hi_uv[a] - 1.5 * cell) & (iuv[:, a] < hi_uv[a] + 3 * cell), a]
+                if len(lo_side) > 5:
+                    lo_uv[a] = lo_side.max()
+                if len(hi_side) > 5:
+                    hi_uv[a] = hi_side.min()
+            half = (hi_uv - lo_uv) / 2
+            if np.any(2 * half < min_side) or np.any(2 * half > max_side):
+                continue
+            center = c0 + R.T @ ((hi_uv + lo_uv) / 2)
+            floor = below[inside, 2]
+            out.append(Basin(np.r_[center, z0], half, yaw, float(z0 - np.percentile(floor, 5)), int(inside.sum())))
+        return out
+
+    def locate_basin(self, frames=3, near=None):
+        """Sink basin estimate from `frames` views (median of the per-frame rim fits); None if not seen."""
+        seen = []
+        for _ in range(frames):
+            bs = self.detect_basin()
+            if bs:
+                ref = near if near is not None else self.env.pose[:2]
+                seen.append(min(bs, key=lambda b: np.linalg.norm(b.center[:2] - np.asarray(ref)[:2])))
+        if not seen:
+            return None
+        k = int(np.argsort([b.center[0] for b in seen])[len(seen) // 2])
+        best = seen[k]
+        return Basin(np.median([b.center for b in seen], 0), np.median([b.half for b in seen], 0), best.yaw,
+                     float(np.median([b.depth for b in seen])), best.n_below)
 
     # -------------------------------------------------------------- API
     def reset(self):

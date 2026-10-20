@@ -51,13 +51,17 @@ lòng bồn và tay đã nhả.
 | Kỹ năng | Thành công | Sai số nhận thức (trung vị) | Lần chạm tay | Dừng tay (> 25 N) | Rơi vật | Ngã |
 |---|---|---|---|---|---|---|
 | Gắp | **50/50 (100%)** | 1,7 mm | 0 | 0 | 0 | 0 |
-| Thả vào bồn | **50/50 (100%)** | 1,5 mm | 34 | 7 | 0 | 0 |
+| Thả vào bồn (bồn do camera tìm) | **50/50 (100%)** | 1,5 mm (bồn: 1,2 mm) | 29 | 6 | 0 | 0 |
+| Thả, bồn bị dời dọc quầy tới ±24 cm (robot không được báo) | **50/50 (100%)** | 1,6 mm (bồn: 1,2 mm) | 40 | 10 | 0 | 0 |
 
 - Lần chạm tay khi thả là các chạm nhẹ (mép quầy / thân robot) lúc đưa tay ra vào. Bộ tìm đường cánh tay phải đi
   vòng ở mọi lượt thả (100 đường thẳng bị loại vì va chạm) và luôn tìm được đường không va chạm. Trước bản sửa
   đường đi cánh tay có một lượt tay tì vào thân robot với lực 104 N (332 lần dừng); sau sửa: 7 lần dừng trên 50 lượt.
 
 ### E3 — Toàn bộ nhiệm vụ có người đi lại (30 lượt, mức 2)
+
+> Số liệu dưới đây là của phiên bản *trước* giai đoạn 1 (bồn lấy từ bản đồ). E3 với code mới nhất (bồn do camera
+> tìm, giữ tay cố định khi mang) đang được chạy lại, cả với bồn ở chỗ cũ và bồn bị dời.
 
 Lệnh *"bring the can to the sink"*: robot xuất phát ngẫu nhiên ở phòng khách, đi tới bàn ăn, tìm và gắp lon, mang
 sang bếp, thả vào bồn. Ghế dịch ngẫu nhiên, một người đi lại suốt lượt, giới hạn 180 s cho mỗi chặng điều hướng.
@@ -106,6 +110,9 @@ Expert (dùng nhận thức camera) thành công 60/61 lần thử; chỉ giữ 
 | Bàn tay buông chạm mép bàn khi tới gần | Tay còn buông khi robot bước sát bàn | Nâng tay lên tư thế sẵn sàng *trước* khi bước sát bàn |
 | E3: robot đứng yên sau khi gắp, không có đường tới bồn | Ô bản đồ LiDAR được phồng từ tâm ô → ghế "to" hơn thật ~3 cm, khe hẹp cạnh bàn bị đóng | Phồng ô nhớ LiDAR bớt nửa ô (bù lượng tử hóa) |
 | Xem trong MuJoCo bị giật | Nhận thức camera (0,5 s) và tìm đường cánh tay (1,5 s) làm chậm vòng mô phỏng | `view.py` mô phỏng trước rồi phát lại đúng thời gian thực |
+| Bồn rửa là tọa độ cố định (hard-code) | Expert đọc `SINK_CENTER` | Camera tìm bồn: lỗ trên mặt phẳng quầy có điểm thấp hơn bên trong → khớp hình chữ nhật miệng bồn; nếu chưa thấy trọn thì quay tìm |
+| Đứng chéo ở góc quầy, vai tì vào quầy | Căn chỉnh chấp nhận mọi hướng | Đứng vuông với mép quầy, hướng lấy từ bồn đo được |
+| Lon trượt dần trong tay khi mang (~1 mm/s) | IK đuổi theo xương chậu lắc / nhún 2,5 Hz → servo tay cộng hưởng, tay rung 3–5 cm | Khi mang, khớp tay giữ cố định so với thân (giải IK một lần); trượt giảm ~3 lần |
 
 ## 4. Giới hạn (cần đọc trước khi trích dẫn số liệu)
 

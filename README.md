@@ -15,13 +15,30 @@ simulator state.
 |---|---|
 | E1 navigation, 100 runs per level | level 1: **99%**, level 2 (person): **94%**, level 3 (person + pet): **80%**; 0 furniture contacts, 0 falls |
 | E4 level 2 with the safety layer off | 99% reached, but person contacts while moving 7 -> **26** |
-| E2 pick, 50 runs (start +-10 cm / +-15 deg) | **50/50**, perception error median 1.7 mm, 0 arm contacts |
-| E2 drop into the sink, 50 runs | **50/50**, 7 arm stops (light contacts), 0 objects dropped |
-| E3 full task with a person, 30 runs | **26/30 (87%)**, 168 s on average, 0 falls |
-| Dataset | 60 LeRobot v2.1 episodes (30 pick, 30 drop) |
+| E2 pick, 50 runs (start +-10 cm / +-15 deg) | **50/50**, object pose error median 1.7 mm, 0 arm contacts |
+| E2 drop into the sink (basin found by the camera), 50 runs | **50/50**, basin error median 1.2 mm (max 3.3 mm), 6 arm stops (light contacts) |
+| E2 drop, sink moved along the counter by up to +-24 cm (not told to the robot), 50 runs | **50/50**, basin error median 1.2 mm (max 2.7 mm) |
+| E3 full task with a person, 30 runs | being re-run with the latest code (sink perception + steady carry); with the previous code (sink from the map): 26/30 |
+| Dataset | 60 LeRobot v2.1 episodes (30 pick, 30 drop; generated before the sink perception) |
 
-Failures left: level 3 time-outs (the robot yields a lot with two moving agents), and in E3 the can slipping out
-of the hand on two long carries.
+Open issue: the held can creeps slowly in the hand while the robot walks (gait vibration); holding the arm still
+relative to the body during the carry (below) cut the creep about 3x (`scripts/carry_bench.py`).
+
+## Demo
+
+```bash
+python scripts/view.py                       # MuJoCo window: "bring the can to the sink", level 2, seed 2
+python scripts/view.py --level 3 --seed 7    # another episode (with the pet)
+```
+
+The episode is simulated first (2-3 min, same code as the evaluations) and then replayed at real time; the
+recording is cached in `logs/` (replayed at once next time, re-simulated when the code changed, `--fresh` forces
+it). Keys: space pause, +/- speed, R restart, F follow the robot. The replay draws reduced copies of the robot
+meshes (25 % of the ~0.6 M triangles, orientation-checked against the originals, cached in `logs/lowpoly/`) and
+no shadows: ~25 fps at 1280x720 on an integrated Intel GPU, against ~9 fps with the original meshes.
+`--full-detail` draws the original meshes, `--shadows` turns shadows on (best with the discrete GPU selected for
+`python.exe` in Windows graphics settings). Physics and perception always use the full models.
+Video: `report/demo_full_task.mp4`.
 
 ## Architecture
 
@@ -66,6 +83,11 @@ robot's joint state. No simulator segmentation or object state is used.
    plane at several yaw angles. (The can is rotationally symmetric: its yaw is not observable from geometry.)
 4. **Tracking** - one Kalman filter per object (random-walk position model, objects rest until moved),
    nearest-neighbour gating, track IDs, confirmation after 2 hits, deletion after 10 misses.
+5. **Sink basin** - a hole in a horizontal support plane (filled-hole test on a 2 cm grid) that has surface
+   points below the plane (a depression, not an occlusion); the rim is fitted as a rectangle along the hole's
+   principal axes and each edge is refined on the nearest counter-top points; median over 3 frames. If the basin
+   is not fully in view the robot turns in place in ~30 deg steps and looks again. The drop target and the
+   stance (square to the counter edge) come only from this estimate.
 
 The expert walks to the table's usual object spot from the semantic map, refines the target from the camera every
 0.5 s while stepping, measures the 6D pose again once standing, and grasps at that pose. The pose of the object in
@@ -80,6 +102,11 @@ then a slow lift (SIMPLE / BODex style pregrasp -> grasp -> squeeze). The drop p
 front half of the basin and opens the hand.
 
 ### Safety
+
+Carrying: while the hand holds an object and walks, the arm joints are solved once for the carry pose and then held
+still relative to the body (no IK chasing the swaying, bobbing pelvis, which made the arm servos resonate and the
+object creep out of the grip); for the last steps to the counter the object is carried 10 cm higher, and the
+robot stands square to the counter edge (orientation from the perceived basin).
 
 Walking posture: with an empty hand both arms hang beside the body and swing with the opposite leg (driven by
 the measured hip pitch, so the swing follows the real stride and stops when the legs stop). At the table the
@@ -121,9 +148,10 @@ python scripts/eval_full.py --n 30 --level 2               # E3 full task with a
 python scripts/gen_data.py --pick 30 --place 30 --workers 3 # LeRobot dataset -> data/homebot_can
 python scripts/plots.py                                    # tables + figures -> results/summary.md, report/figures
 python scripts/make_video.py --level 2 --seed 2 --out report/demo_full_task.mp4   # demo video
-python scripts/view.py                                     # MuJoCo viewer: simulate the full task, then replay it
-                                                           # smoothly in real time (space, +/-, R, F); --live
-                                                           # shows the simulation while it runs
+python scripts/view.py                                     # MuJoCo viewer (see Demo)
+python scripts/eval_manip.py --n 50 --skills place --sink-range 0.25 --out results/e2_place_sink_moved.csv
+python scripts/eval_full.py --n 30 --sink-range 0.25 --out results/e3_full_level2_sink_moved.csv
+python scripts/carry_bench.py --n 6                        # how much a held object moves in the hand while walking
 ```
 
 Learned policies (Kaggle GPU): `notebooks/kaggle_train_act.ipynb` (ACT, LeRobot), `notebooks/kaggle_finetune_gr00t.ipynb`
@@ -146,6 +174,11 @@ Learned policies (Kaggle GPU): `notebooks/kaggle_train_act.ipynb` (ACT, LeRobot)
 - **Objects**: the YCB tomato soup can is the manipulated object. The YCB mug (handle caught the fingers) and the
   small YCB cup (slipped out of the hand) were dropped; the mug stays in the recognition library.
 - The robot pose given to the planner is the true pose + 2 cm noise (no SLAM).
+- **What is still given instead of perceived** (being replaced step by step): the semantic map's work places
+  (approach points of the table and the counter, the usual object spot as a search prior), the command ->
+  skill sequence table, the robot pose (see above) and the scripted manipulation expert itself (the learned
+  GR00T / ACT policies are prepared, not trained). The sink basin is perceived; its true position is used only
+  to build the scene and to score success (`--sink-range` moves it for the generalisation tests).
 - **Gait.** The walking policy was trained on Unitree's own 12-DoF G1 model; on this model (Menagerie G1 with
   joint armature, Inspire hands) it drifts ~0.12 m/s sideways and walks with bent knees. The PI velocity loop
   cancels the drift (the robot goes where it is sent), but the slight sideways bias of the steps stays visible.
