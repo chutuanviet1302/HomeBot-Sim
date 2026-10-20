@@ -26,6 +26,13 @@ relative to the body during the carry (below) cut the creep about 3x (`scripts/c
 
 ## Demo
 
+![HomeBot-Sim demo: bring the can to the sink](report/demo.gif)
+
+*"bring the can to the sink"*, level 2 (a person walks around, the red cylinder), seed 2, shown 7x faster: the robot
+walks from the living room to the dining table, raises its hand, grasps the can, carries it to the kitchen, finds
+the sink basin with its head camera and drops the can in (198 s). Full-length video with the head-camera view and
+the perception output: [report/demo_full_task.mp4](report/demo_full_task.mp4).
+
 ```bash
 python scripts/view.py                       # MuJoCo window: "bring the can to the sink", level 2, seed 2
 python scripts/view.py --level 3 --seed 7    # another episode (with the pet)
