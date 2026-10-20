@@ -1,0 +1,55 @@
+{
+  "state": {
+    "body_joints": {
+      "start": 0,
+      "end": 29
+    },
+    "right_hand": {
+      "start": 29,
+      "end": 35
+    },
+    "right_wrist_pos": {
+      "start": 35,
+      "end": 38
+    },
+    "right_wrist_rot6d": {
+      "start": 38,
+      "end": 44
+    }
+  },
+  "action": {
+    "right_wrist_pos": {
+      "start": 0,
+      "end": 3
+    },
+    "right_wrist_rot6d": {
+      "start": 3,
+      "end": 9
+    },
+    "base_height": {
+      "start": 9,
+      "end": 10
+    },
+    "stand": {
+      "start": 10,
+      "end": 11
+    },
+    "right_hand": {
+      "start": 11,
+      "end": 17
+    }
+  },
+  "video": {
+    "head": {
+      "original_key": "observation.images.head"
+    },
+    "wrist": {
+      "original_key": "observation.images.wrist"
+    }
+  },
+  "annotation": {
+    "human.task_description": {
+      "original_key": "task_index"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+MUJOCO_LOG.TXT
+logs/
+# downloaded by scripts/setup_assets.sh
+third_party/mujoco_menagerie/
+third_party/unitree_ros/
+third_party/ycb/

@@ -1,0 +1,5 @@
+safety,level,runs,success_rate,person_contacts,person_contacts_robot_moving,pet_contacts,pet_contacts_robot_moving,furniture_contacts,min_person_dist_m,median_min_person_dist_m,mean_time_s(success),falls
+False,2,100,0.99,27,26,0,0,0,-0.444,0.04,39.6,0
+True,1,100,0.99,0,0,0,0,0,inf,inf,26.0,0
+True,2,100,0.94,16,7,0,0,0,-0.226,0.047,46.2,0
+True,3,100,0.8,13,11,7,6,0,-0.325,0.048,54.3,0

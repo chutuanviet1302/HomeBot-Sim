@@ -1,0 +1,93 @@
+{
+  "codebase_version": "v2.1",
+  "robot_type": "unitree_g1_inspire_rh56",
+  "fps": 25,
+  "total_episodes": 60,
+  "total_frames": 25828,
+  "total_tasks": 2,
+  "chunks_size": 1000,
+  "total_chunks": 1,
+  "splits": {
+    "train": "0:60"
+  },
+  "data_path": "data/chunk-{episode_chunk:03d}/episode_{episode_index:06d}.parquet",
+  "video_path": "videos/chunk-{episode_chunk:03d}/{video_key}/episode_{episode_index:06d}.mp4",
+  "features": {
+    "observation.state": {
+      "dtype": "float32",
+      "shape": [
+        44
+      ]
+    },
+    "action": {
+      "dtype": "float32",
+      "shape": [
+        17
+      ]
+    },
+    "timestamp": {
+      "dtype": "float32",
+      "shape": [
+        1
+      ]
+    },
+    "frame_index": {
+      "dtype": "int64",
+      "shape": [
+        1
+      ]
+    },
+    "episode_index": {
+      "dtype": "int64",
+      "shape": [
+        1
+      ]
+    },
+    "index": {
+      "dtype": "int64",
+      "shape": [
+        1
+      ]
+    },
+    "task_index": {
+      "dtype": "int64",
+      "shape": [
+        1
+      ]
+    },
+    "observation.images.head": {
+      "dtype": "video",
+      "shape": [
+        224,
+        224,
+        3
+      ],
+      "names": [
+        "height",
+        "width",
+        "channel"
+      ],
+      "info": {
+        "video.fps": 25,
+        "video.codec": "h264"
+      }
+    },
+    "observation.images.wrist": {
+      "dtype": "video",
+      "shape": [
+        224,
+        224,
+        3
+      ],
+      "names": [
+        "height",
+        "width",
+        "channel"
+      ],
+      "info": {
+        "video.fps": 25,
+        "video.codec": "h264"
+      }
+    }
+  }
+}
