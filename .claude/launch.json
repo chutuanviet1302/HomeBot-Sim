@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "homebot-api",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "uvicorn", "web.backend.app:app", "--host", "127.0.0.1", "--port", "8000"],
+      "port": 8000
+    },
+    {
+      "name": "homebot-web",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "web/frontend", "run", "dev"],
+      "port": 5173
+    }
+  ]
+}
