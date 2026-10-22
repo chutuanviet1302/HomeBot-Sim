@@ -3,6 +3,7 @@
 python scripts/eval_manip.py --n 50 --policy expert
 python scripts/eval_manip.py --n 50 --policy gr00t --host <server>      (Kaggle / GPU box)
 python scripts/eval_manip.py --n 50 --policy torch:checkpoints/act.pt
+python scripts/eval_manip.py --n 20 --policy psi0 --host https://<tunnel>.trycloudflare.com   (Psi0 server)
 """
 from __future__ import annotations
 
@@ -33,9 +34,13 @@ def perturbed(place, rng):
 def make_policy(name, env, rng, host="localhost"):
     if name == "expert":
         return Expert(env, rng=rng)
-    from homebot.policy import LearnedSkillPolicy, gr00t_client, torch_policy
+    from homebot.policy import LearnedSkillPolicy, act_policy, gr00t_client, psi0_client, torch_policy
+    if name.startswith("act:"):
+        return LearnedSkillPolicy(env, act_policy(name.split(":", 1)[1]))
     if name == "gr00t":
         return LearnedSkillPolicy(env, gr00t_client(host))
+    if name == "psi0":
+        return LearnedSkillPolicy(env, psi0_client(host))
     if name.startswith("torch:"):
         return LearnedSkillPolicy(env, torch_policy(name.split(":", 1)[1]))
     raise ValueError(name)
@@ -64,7 +69,7 @@ def run_one(args):
     st = env.stats
     cup_z = float(env.cup_pose()[0][2])
     env.close()
-    return {"skill": skill, "seed": seed, "policy": policy, "success": bool(ok), "cup": env.cup_type,
+    return {"skill": skill, "seed": seed, "policy": policy.split(":")[0], "success": bool(ok), "cup": env.cup_type,
             "arm_contacts": st["arm_contacts"], "arm_stops": st["arm_stops"], "fell": st["fell"],
             "arm_paths_rejected": st["arm_paths_rejected"], "arm_paths_blocked": st.get("arm_paths_blocked", 0),
             "perception_err_mm": st.get("perc_err_mm", float("nan")),
@@ -127,7 +132,7 @@ def main():
                     help="move the sink along the counter by up to +-this (m) per trial (generalisation test)")
     a = ap.parse_args()
     jobs = [(sk, s, a.policy, a.host, a.sink_range) for sk in a.skills for s in range(a.n)]
-    workers = min(a.workers, 3) if a.policy == "expert" else 1     # ~600 MB per G1 + Inspire env
+    workers = 1 if a.policy == "gr00t" else min(a.workers, 3)     # ~600 MB per G1 + Inspire env; one GR00T server
     rows = []
     # fresh worker processes every few trials: each trial builds a G1 model, a walking policy and renderers
     with Pool(workers, maxtasksperchild=4) as pool:

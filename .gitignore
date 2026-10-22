@@ -6,3 +6,17 @@ logs/
 third_party/mujoco_menagerie/
 third_party/unitree_ros/
 third_party/ycb/
+# results website (web/): generated files
+web/homebot.db
+web/backend/cache/
+web/backend/jobs/
+web/frontend/node_modules
+web/frontend/dist
+web/frontend/dist-static
+web/frontend/public/data/
+web/frontend/public/media/
+web/frontend/tsconfig.tsbuildinfo
+# Psi0 export (python scripts/export_psi0.py; uploaded to Kaggle) and data-generation scratch parts
+data/psi0/
+data/_*/
+checkpoints/

@@ -55,17 +55,29 @@ def obb_circle_distance(center, yaw, half, p):
     return float(np.linalg.norm(np.maximum(q, 0)) + min(max(q[0], q[1]), 0))
 
 
-class Person:
-    """Walks between random free goals at 0.8-1.2 m/s, about half the time cutting
-    across the robot's route. It never yields to a *moving* robot (worst case for the
-    planner); like a real person it does not walk straight into a robot that is
-    standing still or backing away - it waits and then re-routes around it."""
+PERSON_PROFILES = {
+    # walking speed (m/s), pause at a goal (s), chance per second of stopping on the way, its length (s),
+    # chance that a goal is one of the places where the household happens (kitchen, sink, table)
+    "adult": dict(speed=(0.8, 1.2), pause=(0.0, 2.0), hesitate=0.0, hesitate_s=(0.0, 0.0), home_spots=0.0),
+    "elderly": dict(speed=(0.4, 0.7), pause=(2.0, 6.0), hesitate=0.08, hesitate_s=(1.0, 3.0), home_spots=0.4),
+}
 
-    def __init__(self, rng, occ_true, robot_route=None):
+
+class Person:
+    """Walks between random free goals, about half the time cutting across the robot's route. It never yields
+    to a *moving* robot (worst case for the planner); like a real person it does not walk straight into a robot
+    that is standing still or backing away - it waits and then re-routes around it.
+    Profiles: "adult" 0.8-1.2 m/s; "elderly" (the person the robot helps): 0.4-0.7 m/s, stops on the way now
+    and then, stands for a while where it arrives and often goes to the kitchen / sink / table - the places the
+    robot works at."""
+
+    def __init__(self, rng, occ_true, robot_route=None, profile="adult"):
         self.rng = rng
         self.occ = inflate(occ_true, apt.PERSON_RADIUS + 0.08)
         self.route = robot_route
-        self.speed = rng.uniform(0.8, 1.2)
+        self.profile = profile
+        self.prof = PERSON_PROFILES[profile]
+        self.speed = rng.uniform(*self.prof["speed"])
         self.pos = self._sample_free()
         self.wps, self.pause = [], 0.0
         self.vel = np.zeros(2)
@@ -78,6 +90,12 @@ class Person:
                 return p
 
     def _new_goal(self, robot_xy):
+        if self.prof["home_spots"] and self.rng.random() < self.prof["home_spots"]:
+            name = self.rng.choice(["kitchen", "sink", "table"])
+            p = apt.PLACES[name]
+            g = np.asarray(p.get("pre", p["pos"]), float) + self.rng.uniform(-0.4, 0.4, 2)
+            if not apt.occupied(self.occ, g):
+                return g
         if self.route is not None and self.rng.random() < 0.5:
             # cut across the robot's route: aim through a random point of it to the far side
             a, b = np.asarray(self.route[0], float), np.asarray(self.route[1], float)
@@ -129,13 +147,17 @@ class Person:
             self.pause -= dt
             self.vel[:] = 0
             return
+        if self.prof["hesitate"] and len(self.wps) and self.rng.random() < self.prof["hesitate"] * dt:
+            self.pause = self.rng.uniform(*self.prof["hesitate_s"])      # stops for a moment on the way
+            self.vel[:] = 0
+            return
         if not len(self.wps):
             path = astar(self.occ, self.pos, self._new_goal(robot_xy))
             if path is None or len(path) < 2:
                 self.pause = 0.5
                 return
             self.wps = list(path_to_waypoints(path, 0.3)[1:])
-            self.speed = self.rng.uniform(0.8, 1.2)
+            self.speed = self.rng.uniform(*self.prof["speed"])
         tgt = self.wps[0]
         d = tgt - self.pos
         n = np.linalg.norm(d)
@@ -144,7 +166,7 @@ class Person:
             self.pos = tgt.copy()
             self.wps.pop(0)
             if not self.wps:
-                self.pause = self.rng.uniform(0.0, 2.0)
+                self.pause = self.rng.uniform(*self.prof["pause"])
         else:
             self.pos = self.pos + d / n * step
         self.vel = d / max(n, 1e-6) * self.speed
@@ -197,9 +219,10 @@ class HomeEnv:
     """
 
     def __init__(self, level=1, seed=0, cup_type=None, with_toy=False, limits: VelLimits | None = None,
-                 render=False, perception=True, relaxed_arms=True, sink_offset=0.0):
+                 render=False, perception=True, relaxed_arms=True, sink_offset=0.0, person_profile="adult"):
         self.level = level
         self.relaxed_arms = relaxed_arms      # walk with hanging, swinging arms; the hand gets ready when it works
+        self.person_profile = person_profile  # "adult" or "elderly" (see Person)
         self.use_perception = perception      # object poses from the head RGB-D camera (homebot/perception.py)
         self._perception = None
         self.held_rel = None                  # object pose in the hand frame, measured when the hand closed
@@ -291,7 +314,7 @@ class HomeEnv:
         self.pose_f = self.pose.copy()
         self.person = self.pet = None
         if self.level >= 2:
-            self.person = Person(self.rng, self.occ_true, robot_route)
+            self.person = Person(self.rng, self.occ_true, robot_route, self.person_profile)
             while np.linalg.norm(self.person.pos - self.pose[:2]) < 1.5:
                 self.person.pos = self.person._sample_free()
         if self.level >= 3:

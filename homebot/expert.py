@@ -452,18 +452,18 @@ class Expert:
         cp, _ = e.cup_pose()
         return bool(e.grasped and cp[2] > apt.TABLE_TOP + e.cup_h / 2 + 0.05)
 
-    def place_cup(self, target_world=None):
-        """Drop the held object into the sink: ALIGN on the basin, hand over the opening (object bottom a few cm
-        above the rim), open the hand, retract."""
+    def approach_sink(self, target_world=None):
+        """Find the basin (camera), carry the object higher, step square to the counter and stand. Returns the
+        drop point (world) or None. Shared by the expert and the learned policies (classical approach)."""
         e = self.env
         if not e.grasped:
-            return False
+            return None
         jitter = self.rng.uniform(-1.0, 1.0, 2)
         if target_world is None:
             basin = self.perceive_basin()
             if basin is None:
                 e.stats["sink_not_seen"] = e.stats.get("sink_not_seen", 0) + 1
-                return False
+                return None
             target_world = self._drop_point(basin, jitter)
             u, v = _basin_frame(basin)
             near = self._near_axis(basin)
@@ -476,13 +476,22 @@ class Expert:
         self.wait(0.6)
         if not self.align_and_stand(DROP_IN_BASE, target_world, face=face) or not e.grasped:
             e.stand_mode = False
-            return False
+            return None
         if basin is not None:                            # closer now: look again
             again = self.perceive_basin(scan=False)
             if again is not None:
                 basin = again
                 target_world = self._drop_point(basin, jitter)
             e.stats["basin_err_mm"] = round(1000 * float(np.linalg.norm(basin.center[:2] - e.sink_center)), 1)
+        return target_world
+
+    def place_cup(self, target_world=None):
+        """Drop the held object into the sink: approach (above), hand over the opening (object bottom a few cm
+        above the rim), open the hand, retract."""
+        e = self.env
+        target_world = self.approach_sink(target_world)
+        if target_world is None:
+            return False
         # where the object sits in the closed hand (6D estimate), so that the object - not the palm - ends up
         # over the basin
         hp, hq = e.hand_world()

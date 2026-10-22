@@ -9,6 +9,22 @@ Everything the robot does goes through the physics: the legs are driven by Unitr
 the object is held only by finger contacts, and the object pose comes from the camera image, not from the
 simulator state.
 
+## The problem it addresses
+
+**Older and mobility-impaired people living at home** need help with small, repetitive chores such as taking a
+used can or cup to the kitchen sink. Each trip across the apartment is a fall risk, and a helper is not always
+around. A home robot is only useful for this if it
+
+1. **gets the job done in a real home**: furniture is moved every day, objects are not where they were last time,
+   the sink is not at a programmed coordinate;
+2. **is safe with the person it lives with**: someone who walks slowly, stops unexpectedly and stands where the
+   robot needs to work; no contact while the robot moves, no dropped objects, no falls;
+3. **needs no programming for each home**: it finds the object and the sink with its own camera.
+
+HomeBot-Sim measures exactly these three properties on a full-size humanoid (Unitree G1 with a dexterous Inspire
+hand) in simulation, including an experiment with an *elderly co-occupant* (E5), and a results website lets a
+caregiver or developer inspect every run.
+
 ## Results (scripted expert with camera perception; full numbers in `report/report.md`)
 
 | experiment | result |
@@ -18,13 +34,25 @@ simulator state.
 | E2 pick, 50 runs (start +-10 cm / +-15 deg) | **50/50**, object pose error median 1.7 mm, 0 arm contacts |
 | E2 drop into the sink (basin found by the camera), 50 runs | **50/50**, basin error median 1.2 mm (max 3.3 mm), 6 arm stops (light contacts) |
 | E2 drop, sink moved along the counter by up to +-24 cm (not told to the robot), 50 runs | **50/50**, basin error median 1.2 mm (max 2.7 mm) |
-| E3 full task with a person, 30 runs | being re-run with the latest code (sink perception + steady carry); with the previous code (sink from the map): 26/30 |
+| E3 full task with a person, 30 runs | **29/30 (97%)**, 181 s on average, basin error median 1.7 mm, 0 falls |
+| E3 with the sink moved by up to +-24 cm, 30 runs | **28/30 (93%)**, basin error median 1.8 mm, 0 falls |
+| E5 full task with an elderly co-occupant (slow, stops, hesitates), 30 runs | **25/30 (83%)**, person contacts 19 (12 while moving) vs 10 (5) with an adult, 0 falls |
+| E2 with the learned ACT policy, 50 runs per skill | pick **29/50 (58%)**, drop **45/50 (90%)**, 0 arm contacts, 0 falls |
+| E2 / E3 with a short Psi0 fine-tune (300 steps), 10 / 5 runs | pick 0/10, drop 5/10; E3 0/5 |
 | Dataset | 60 LeRobot v2.1 episodes (30 pick, 30 drop; generated before the sink perception) |
 
-Open issue: the held can creeps slowly in the hand while the robot walks (gait vibration); holding the arm still
-relative to the body during the carry (below) cut the creep about 3x (`scripts/carry_bench.py`).
+All E3 failures left are navigation time-outs on the way to the sink (180 s). The held can still creeps slowly in
+the hand while the robot walks (gait vibration); holding the arm still relative to the body during the carry
+(below) cut the creep about 3x (`scripts/carry_bench.py`) and no E3 run lost the can.
 
 ## Demo
+
+![HomeBot-Sim demo: bring the can to the sink](report/demo.gif)
+
+*"bring the can to the sink"*, level 2 (a person walks around, the red cylinder), seed 2, shown 7x faster: the robot
+walks from the living room to the dining table, raises its hand, grasps the can, carries it to the kitchen, finds
+the sink basin with its head camera and drops the can in (198 s). Full-length video with the head-camera view and
+the perception output: [report/demo_full_task.mp4](report/demo_full_task.mp4).
 
 ```bash
 python scripts/view.py                       # MuJoCo window: "bring the can to the sink", level 2, seed 2
@@ -145,6 +173,7 @@ bash scripts/setup_assets.sh        # Menagerie G1, unitree_ros Inspire hand + G
 python scripts/eval_nav.py --n 100 --levels 1 2 3 --e4     # E1 + E4 navigation
 python scripts/eval_manip.py --n 50                        # E2 pick / drop (expert)
 python scripts/eval_full.py --n 30 --level 2               # E3 full task with a person
+python scripts/eval_full.py --n 30 --level 2 --person elderly --out results/e5_elderly.csv   # E5 elderly co-occupant
 python scripts/gen_data.py --pick 30 --place 30 --workers 3 # LeRobot dataset -> data/homebot_can
 python scripts/plots.py                                    # tables + figures -> results/summary.md, report/figures
 python scripts/make_video.py --level 2 --seed 2 --out report/demo_full_task.mp4   # demo video
@@ -154,9 +183,30 @@ python scripts/eval_full.py --n 30 --sink-range 0.25 --out results/e3_full_level
 python scripts/carry_bench.py --n 6                        # how much a held object moves in the hand while walking
 ```
 
-Learned policies (Kaggle GPU): `notebooks/kaggle_train_act.ipynb` (ACT, LeRobot), `notebooks/kaggle_finetune_gr00t.ipynb`
-(GR00T N1.7 fine-tune, `configs/gr00t_g1_sonic_inspire.py`), `notebooks/kaggle_eval.ipynb` (E2 with
-`--policy torch:...` / `--policy gr00t`).
+### Learned policies
+
+The classical controller walks the robot up to the table / counter from the perceived can / basin and stands;
+the learned policy then drives the arm and the fingers (`homebot/policy.py`, same `pick_cup()` / `place_cup()`
+interface as the expert).
+
+- **ACT** (`homebot/act.py`, plain PyTorch, 24 M parameters: ResNet-18 on the head + wrist cameras, transformer
+  encoder-decoder, CVAE, chunks of 30 actions, re-planned every 10). Trained on Kaggle (1x T4, 20 000 steps,
+  batch 32, fp16, 58 min): `notebooks/kaggle_train_act.ipynb` (runs `scripts/train_act.py --pretrained`), download
+  `act_homebot.pt` to `checkpoints/`, evaluate locally on the CPU with the E2 / E3 protocol:
+  ```bash
+  python scripts/eval_manip.py --policy act:checkpoints/act_homebot.pt --n 50 --workers 2 --out results/e2_manip_act.csv
+  python scripts/eval_full.py --policy act:checkpoints/act_homebot.pt --n 30 --workers 2
+  ```
+  E2: pick 29/50, drop 45/50 (expert 50/50, 50/50), no arm contacts.
+- **Psi0** (VLA for humanoid loco-manipulation, Qwen3-VL-2B + flow action expert, github.com/physical-
+  superintelligence-lab/Psi0): `scripts/export_psi0.py` converts the dataset to Psi0's real-robot format (states 30,
+  actions 34: both hands, both arms, torso, base commands; head camera); `notebooks/kaggle_finetune_psi0.ipynb` is a
+  best-effort fine-tune on 2x T4 (frozen VLM, emulated bf16, 300 steps ~ 0.2 epoch - the authors use 8 GPUs and
+  40 000 steps), served from Kaggle through a tunnel (`--policy psi0 --host <url>`, `notebooks/psi0_guide.md`).
+  E2 pick 0/10, drop 5/10; E3 0/5: far too little training to grasp.
+- **GR00T N1.7**: `configs/gr00t_g1_sonic_inspire.py`, `notebooks/kaggle_finetune_gr00t.ipynb`. NVIDIA recommends
+  40+ GB of GPU memory for fine-tuning and 16+ GB for inference, and the backbone is gated on Hugging Face: it does
+  not fit the hardware used here (GTX 1650 4 GB, Kaggle T4 16 GB).
 
 ## Simplifications and limits (read before quoting numbers)
 
@@ -165,8 +215,10 @@ Learned policies (Kaggle GPU): `notebooks/kaggle_train_act.ipynb` (ACT, LeRobot)
 - **Base lock while the hand works.** The walking policy cannot stand still without stepping (the pelvis sways
   ~3 cm per step), so for manipulation the robot holds its pose for ~1 s and then the pelvis is welded in place
   (the same simplification as the HomeHand project); walking resumes after the skill.
-- **GR00T N1.7 / ACT are prepared, not trained here.** The dataset, configs and Kaggle notebooks are provided; the
-  reported manipulation numbers are for the scripted expert (with camera perception).
+- **Learned policies**: the reported E1-E5 numbers are for the scripted expert (with camera perception); ACT and
+  Psi0 have their own rows (trained on Kaggle, see Learned policies); GR00T N1.7 needs more GPU
+  memory than available. GEAR-SONIC is not integrated as a separate controller (Psi0 uses it as its lower-body
+  controller in the authors' setup).
 - **E2 drop trials** start from a real contact pick at the table, after which the robot and the held can are moved
   together to the start pose near the sink (test setup only; E3 walks the whole way).
 - **People and the pet** are kinematic boxes (mocap) with simple yielding behaviour; contacts with them are measured
@@ -176,8 +228,8 @@ Learned policies (Kaggle GPU): `notebooks/kaggle_train_act.ipynb` (ACT, LeRobot)
 - The robot pose given to the planner is the true pose + 2 cm noise (no SLAM).
 - **What is still given instead of perceived** (being replaced step by step): the semantic map's work places
   (approach points of the table and the counter, the usual object spot as a search prior), the command ->
-  skill sequence table, the robot pose (see above) and the scripted manipulation expert itself (the learned
-  GR00T / ACT policies are prepared, not trained). The sink basin is perceived; its true position is used only
+  skill sequence table, the robot pose (see above) and the scripted manipulation expert itself (the learned ACT
+  policy replaces it at 58% pick / 90% drop; GR00T is prepared, not trained). The sink basin is perceived; its true position is used only
   to build the scene and to score success (`--sink-range` moves it for the generalisation tests).
 - **Gait.** The walking policy was trained on Unitree's own 12-DoF G1 model; on this model (Menagerie G1 with
   joint armature, Inspire hands) it drifts ~0.12 m/s sideways and walks with bent knees. The PI velocity loop
