@@ -47,12 +47,21 @@ the hand while the robot walks (gait vibration); holding the arm still relative 
 
 ## Demo
 
-![HomeBot-Sim demo: bring the can to the sink](report/demo.gif)
+All clips: *"bring the can to the sink"*, scripted expert with camera perception, shown 7x faster, the camera follows
+the robot. The person is the red cylinder.
 
-*"bring the can to the sink"*, level 2 (a person walks around, the red cylinder), seed 2, shown 7x faster: the robot
-walks from the living room to the dining table, raises its hand, grasps the can, carries it to the kitchen, finds
-the sink basin with its head camera and drops the can in (198 s). Full-length video with the head-camera view and
-the perception output: [report/demo_full_task.mp4](report/demo_full_task.mp4).
+| E3: a person walks around (level 2, seed 2) | E5: elderly co-occupant (slow, stops, hesitates) |
+|---|---|
+| ![E3 full task with a person](report/demo.gif) | ![E5 full task with an elderly co-occupant](report/demo_elderly.gif) |
+| Living room -> dining table, grasp, carry to the kitchen, basin found by the head camera, drop: **success, 198 s** | Same start with the elderly profile, 0 person contacts: **success, 173 s** |
+| **Sink moved 20 cm along the counter** (not told to the robot) | **Level 3: person + pet** (seed 7) |
+| ![E3 with the sink moved](report/demo_sink_moved.gif) | ![Level 3 with a person and a pet](report/demo_pet.gif) |
+| The basin is found again by the camera and the can lands in it: **success, 220 s** | Person and pet move around, 0 person contacts: **success, 226 s** |
+
+Full-length video with the head-camera view and the perception output:
+[report/demo_full_task.mp4](report/demo_full_task.mp4). The clips are made with
+`python scripts/make_gif.py [--person elderly] [--sink-offset 0.2] [--level 3 --seed 7] --out report/<name>.gif`
+(simulates the episode headless if no recording is cached).
 
 ```bash
 python scripts/view.py                       # MuJoCo window: "bring the can to the sink", level 2, seed 2
