@@ -54,24 +54,23 @@ cmd = cmd.replace("--max-steps 20", f"--max-steps {TRAIN['max_steps']} --save-st
 act = nb([
     ("markdown", """# HomeBot-Sim: train ACT on 1x T4 (Kaggle)
 
-1. *Add Input*: the Kaggle Dataset made from `data/homebot_can` (LeRobot v2.1, 60 episodes).
+1. Data: `data/homebot_can` (LeRobot v2.1, 60 episodes, 22 MB) comes with the cloned repo; a Kaggle Dataset with
+   `meta/info.json` added as an input is used instead if present.
 2. *Settings -> Accelerator*: **GPU T4 x2** (one GPU is used), *Internet*: on.
-3. *Run All* (~1 h). 4. Download `act_homebot.pt` from the *Output* panel (~100 MB) and evaluate it locally:
+3. *Save Version -> Save & Run All* (runs in the background, about 2 h). 4. Download `act_homebot.pt` from the *Output*
+   panel (~100 MB) and evaluate it locally:
    `python scripts/eval_manip.py --policy act:act_homebot.pt --n 50` (the same E2 protocol as the expert).
 
 The model is plain PyTorch (`homebot/act.py`); torchvision is used here only for the ImageNet ResNet-18 weights."""),
     ("code", """
 import glob, os, subprocess
 !nvidia-smi --query-gpu=name,memory.total --format=csv
-infos = glob.glob("/kaggle/input/**/meta/info.json", recursive=True)
-assert infos, "add the homebot_can dataset as an input (Add Input -> your Datasets)"
-DATA = os.path.dirname(os.path.dirname(infos[0]))
-print("dataset:", DATA)
-"""),
-    ("code", """
 !git clone --depth 1 -b homebot-sim-final https://github.com/chutuanviet1302/HomeBot-Sim /kaggle/working/homebot-sim
 %cd /kaggle/working/homebot-sim
 !python -c "import torch, torchvision, cv2, pandas, pyarrow; print(torch.__version__, torchvision.__version__, cv2.__version__)"
+infos = glob.glob("/kaggle/input/**/meta/info.json", recursive=True)
+DATA = os.path.dirname(os.path.dirname(infos[0])) if infos else "/kaggle/working/homebot-sim/data/homebot_can"
+print("dataset:", DATA)
 """),
     ("markdown", "## Train (20k steps, batch 32, fp16; checkpoint every 2000 steps)"),
     ("code", """
@@ -80,7 +79,7 @@ print("dataset:", DATA)
     ("code", """
 !ls -la /kaggle/working/act_homebot.pt
 import torch
-ck = torch.load("/kaggle/working/act_homebot.pt", map_location="cpu")
+ck = torch.load("/kaggle/working/act_homebot.pt", map_location="cpu", weights_only=False)
 print("steps:", ck["steps"], "| config:", ck["cfg"])
 """),
 ])

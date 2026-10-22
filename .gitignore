@@ -19,3 +19,4 @@ web/frontend/tsconfig.tsbuildinfo
 # Psi0 export (python scripts/export_psi0.py; uploaded to Kaggle) and data-generation scratch parts
 data/psi0/
 data/_*/
+checkpoints/

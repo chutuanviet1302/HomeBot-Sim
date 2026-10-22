@@ -69,7 +69,7 @@ def run_one(args):
     st = env.stats
     cup_z = float(env.cup_pose()[0][2])
     env.close()
-    return {"skill": skill, "seed": seed, "policy": policy, "success": bool(ok), "cup": env.cup_type,
+    return {"skill": skill, "seed": seed, "policy": policy.split(":")[0], "success": bool(ok), "cup": env.cup_type,
             "arm_contacts": st["arm_contacts"], "arm_stops": st["arm_stops"], "fell": st["fell"],
             "arm_paths_rejected": st["arm_paths_rejected"], "arm_paths_blocked": st.get("arm_paths_blocked", 0),
             "perception_err_mm": st.get("perc_err_mm", float("nan")),

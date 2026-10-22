@@ -46,7 +46,7 @@ def run_one(args):
         pol = make_policy(policy, env, rng, host)
     r = TaskRunner(env, policy=pol).run(COMMAND)
     env.close()
-    return {"seed": seed, "level": level, "policy": policy, "success": r["success"],
+    return {"seed": seed, "level": level, "policy": policy.split(":")[0], "success": r["success"],
             "failed_at": r["failed_at"] or "", "time_s": round(r["time"], 1),
             "person_contacts": r["person_contacts"], "person_contacts_robot_moving": r["person_contacts_moving"],
             "pet_contacts": r["pet_contacts"], "furniture_contacts": r["furniture_contacts"],

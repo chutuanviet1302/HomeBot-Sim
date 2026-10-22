@@ -76,6 +76,10 @@ lòng bồn và tay đã nhả.
 | Thả vào bồn (bồn do camera tìm) | **50/50 (100%)** | 1,5 mm (bồn: 1,2 mm) | 29 | 6 | 0 | 0 |
 | Thả, bồn bị dời dọc quầy tới ±24 cm (robot không được báo) | **50/50 (100%)** | 1,6 mm (bồn: 1,2 mm) | 40 | 10 | 0 | 0 |
 
+- **ACT (chính sách học, cùng giao thức, 50 lượt mỗi kỹ năng)** (`results/e2_manip_act.csv`): gắp **29/50 (58%)**,
+  thả **45/50 (90%)**; 0 lần chạm tay, 0 lần dừng tay, 0 lần rơi lon, 0 lần ngã. Bộ điều khiển cổ điển vẫn đưa robot
+  tới chỗ đứng từ vị trí lon / bồn do camera ước lượng; ACT điều khiển tay và ngón. Ở các lượt gắp hỏng, hết giới
+  hạn 600 hành động (24 s) mà lon chưa được nhấc lên; 6 lượt có cờ ngoài tầm với.
 - **Ψ₀ (Psi0) fine-tune, cùng giao thức, 10 lượt mỗi kỹ năng** (`results/e2_manip_psi0.csv`): gắp **0/10**
   (209 lần chạm tay, 171 lần dừng tay > 25 N, 1 lần rơi), thả **5/10** (100 chạm, 52 dừng, 4 lần làm rơi lon ngoài
   bồn), 0 lần ngã. Chi tiết và giới hạn ở mục 4.
@@ -96,6 +100,28 @@ Mọi lượt hỏng còn lại là hết giờ (180 s) trên đường tới b�
 
 Ψ₀ thay expert ở hai bước thao tác (5 lượt, bồn ở chỗ cũ, `results/e3_full_level2_psi0.csv`): **0/5**, cả 5 lượt đi
 tới bàn rồi hỏng ở bước gắp (xem E2 và mục 4).
+
+### E5 — Người cao tuổi sống cùng (30 lượt, mức 2, expert)
+
+Cùng nhiệm vụ, cùng seed 0–29 như E3, nhưng người trong nhà theo hồ sơ `elderly` (`homebot/env.py`): đi 0,4–0,7 m/s
+(người lớn 0,8–1,2), dừng 2–6 s giữa đường, thỉnh thoảng đứng do dự 1–3 s, hay quay lại các chỗ quen trong nhà
+(`eval_full.py --person elderly`, `results/e5_elderly.csv`). Đối chứng: chạy lại E3 người lớn trên cùng phiên bản
+code cho đúng 29/30 như bảng E3, nên chênh lệch dưới đây là do hành vi của người, không do code thay đổi.
+
+| Người trong nhà | Thành công | Thời gian TB (s) | Lần chạm người (robot đang đi) | Khoảng cách nhỏ nhất (trung vị) | Ngã | Dừng tay |
+|---|---|---|---|---|---|---|
+| Người lớn (E3) | **29/30 (97%)** | 181 | 10 (5) | 0,04 m | 0 | 6 |
+| Người cao tuổi (E5) | **25/30 (83%)** | 163 | 19 (12) | 0,04 m | 0 | 7 |
+
+- 5 lượt hỏng (người lớn: 1): 2 lượt hết giờ (180 s) trên đường tới bồn; 2 lượt thả không thành công (seed 17 có một
+  lần chạm người, footprint chồng 0,37 m); 1 lượt gắp không thành công. Các seed hỏng (16, 17, 23, 24, 28) đều
+  thành công với người lớn.
+- Số lần chạm người tăng gần gấp đôi (19 so với 10; khi robot đang đi 12 so với 5): người cao tuổi ở lâu trong vùng
+  robot làm việc và không kịp tránh. Người trong mô phỏng cố ý không nhường robot (trường hợp xấu nhất, mục 4).
+  Lớp an toàn hiện chỉ dừng / đi vòng; với người chậm cần thêm hành vi chờ lâu hơn hoặc lùi ra. Đây là hướng cải
+  tiến chính rút ra từ E5.
+- Không lượt nào ngã. Thời gian trung bình của các lượt thành công ngắn hơn (163 s) vì các lượt khó nhất
+  (bị chặn lâu) là các lượt hỏng.
 
 Số liệu dưới đây là của phiên bản *trước* giai đoạn 1 (bồn lấy từ bản đồ, tay đuổi theo thân khi mang):
 
@@ -158,9 +184,13 @@ Expert (dùng nhận thức camera) thành công 60/61 lần thử; chỉ giữ 
 - **Khóa thân khi thao tác**: chính sách đi bộ không đứng yên được (luôn bước tại chỗ), nên khi tay làm việc thân robot
   được giữ cố định (weld) — giống dự án HomeHand.
 - **Chính sách học**: số liệu E1–E4 ở trên là của expert (dùng nhận thức camera thật).
-  - **ACT** (`homebot/act.py`, 24 M tham số, PyTorch thuần): huấn luyện trên Kaggle T4 bằng
-    `notebooks/kaggle_train_act.ipynb`, đánh giá trên máy bằng `--policy act:act_homebot.pt` (cùng giao thức E2/E3).
-    Bộ điều khiển cổ điển đưa robot tới chỗ đứng; chính sách học điều khiển tay và ngón.
+  - **ACT: E2 gắp 29/50, thả 45/50.** `homebot/act.py` (24 M tham số, PyTorch thuần: ResNet-18 ImageNet cho
+    camera đầu + cổ tay, transformer CVAE, chunk 30) huấn luyện trên Kaggle 1× T4 bằng
+    `notebooks/kaggle_train_act.ipynb`: 20 000 bước, batch 32, fp16, **58 phút**, L1 0,85 → ~0,05 trên 22 087 khung
+    robot đứng thao tác của 60 tập expert. Đánh giá trên máy (CPU) bằng `--policy act:checkpoints/act_homebot.pt`,
+    cùng giao thức E2/E3. Bộ điều khiển cổ điển đưa robot tới chỗ đứng; ACT điều khiển tay và ngón (hành động 17-D:
+    tư thế lòng bàn tay, giữ bằng IK, + 6 ngón). So với expert (50/50, 50/50), ACT kém hơn ở bước gắp, nhưng không
+    có lần chạm / dừng tay nào. Dữ liệu chỉ có 30 tập mỗi kỹ năng; thêm dữ liệu là cách cải thiện trực tiếp nhất.
   - **Ψ₀ (Psi0): fine-tune ngắn, E2 gắp 0/10, thả 5/10.** `scripts/export_psi0.py` chuyển phần robot đứng thao tác
     của `data/homebot_can` sang định dạng dữ liệu real-G1 của Ψ₀ (60 tập, 22 087 khung; trạng thái 30 = hai bàn tay,
     14 khớp tay, thân; hành động 34 = như trên + lệnh đế, ở đây bằng 0; camera đầu 224×224). Notebook
