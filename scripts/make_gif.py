@@ -1,7 +1,8 @@
-"""Animated GIF of a recorded episode for the README (from the replay cache written by scripts/view.py).
+"""Animated GIF of a recorded episode for the README (from the replay cache written by scripts/view.py; the episode
+is simulated headless and cached first if there is no up-to-date recording).
 
-python scripts/view.py --level 2 --seed 2      # once: simulates and caches the episode
 python scripts/make_gif.py --out report/demo.gif
+python scripts/make_gif.py --person elderly --out report/demo_elderly.gif
 """
 from __future__ import annotations
 
@@ -30,15 +31,20 @@ def main():
     ap.add_argument("--speed", type=float, default=7.0, help="playback speed-up")
     ap.add_argument("--fps", type=int, default=8)
     ap.add_argument("--width", type=int, default=480)
+    ap.add_argument("--person", default="adult", choices=["adult", "elderly"])
+    ap.add_argument("--sink-offset", type=float, default=0.0)
     ap.add_argument("--out", default=str(ROOT / "report" / "demo.gif"))
     a = ap.parse_args()
     a.command = view.COMMAND
     cached = view.load_cache(a)
-    if cached is None:
-        sys.exit("no up-to-date recording: run  python scripts/view.py --level %d --seed %d  first" % (a.level, a.seed))
-    frames, res = cached
+    if cached is None:                            # no up-to-date recording: simulate (headless) and cache it
+        _, frames, res = view.record(a)
+        view.save_cache(a, frames, res)
+    else:
+        frames, res = cached
     env, _ = view.make_env(a)                     # original meshes, shadows on (offline: speed does not matter)
     m, d = env.m, env.d
+    base = m.jnt_qposadr[mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_JOINT, "floating_base_joint")]  # qpos[0:7]: the can
     h = int(a.width * 9 / 16) // 2 * 2
     r = mujoco.Renderer(m, h, a.width)
     opt = mujoco.MjvOption()
@@ -54,7 +60,8 @@ def main():
         d.qpos[:], d.mocap_pos[:], d.mocap_quat[:] = q, mp, mq
         mujoco.mj_kinematics(m, d)
         mujoco.mj_camlight(m, d)
-        cam.lookat[:2] = q[:2] if i == 0 else 0.3 * cam.lookat[:2] + 0.7 * q[:2]     # follow the robot
+        p = q[base:base + 2]
+        cam.lookat[:2] = p if i == 0 else 0.3 * cam.lookat[:2] + 0.7 * p     # follow the robot
         r.update_scene(d, cam, opt)
         img = np.ascontiguousarray(r.render())
         label = f"t={i * CTRL_DT:5.1f}s  x{a.speed:g}  {txt.split('  safety')[0]}"
