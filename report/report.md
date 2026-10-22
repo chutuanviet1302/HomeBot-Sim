@@ -191,6 +191,8 @@ Expert (dùng nhận thức camera) thành công 60/61 lần thử; chỉ giữ 
     cùng giao thức E2/E3. Bộ điều khiển cổ điển đưa robot tới chỗ đứng; ACT điều khiển tay và ngón (hành động 17-D:
     tư thế lòng bàn tay, giữ bằng IK, + 6 ngón). So với expert (50/50, 50/50), ACT kém hơn ở bước gắp, nhưng không
     có lần chạm / dừng tay nào. Dữ liệu chỉ có 30 tập mỗi kỹ năng; thêm dữ liệu là cách cải thiện trực tiếp nhất.
+    **E3 với ACT chưa đánh giá** (lượt chạy bị dừng vì hết RAM trên máy 16 GB và hết thời gian); lệnh:
+    `python scripts/eval_full.py --policy act:checkpoints/act_homebot.pt --n 30 --workers 2`.
   - **Ψ₀ (Psi0): fine-tune ngắn, E2 gắp 0/10, thả 5/10.** `scripts/export_psi0.py` chuyển phần robot đứng thao tác
     của `data/homebot_can` sang định dạng dữ liệu real-G1 của Ψ₀ (60 tập, 22 087 khung; trạng thái 30 = hai bàn tay,
     14 khớp tay, thân; hành động 34 = như trên + lệnh đế, ở đây bằng 0; camera đầu 224×224). Notebook
