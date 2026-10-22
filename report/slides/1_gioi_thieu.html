@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>HomeBot-Sim giới thiệu</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 40px; }
+  .main { display: grid; grid-template-columns: 1fr 820px; gap: 36px; flex: 1; min-height: 0; }
+  .left { display: flex; flex-direction: column; gap: 22px; }
+  .problem { background: var(--warn-soft); border: 1px solid #f3d6a8; border-radius: 18px; padding: 24px 28px; }
+  .problem h3 { font-size: 26px; margin-bottom: 10px; color: var(--warn); }
+  .problem p { font-size: 22px; line-height: 1.45; }
+  .needs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .need { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 22px 20px; display: flex; flex-direction: column; gap: 10px; }
+  .need .n { width: 44px; height: 44px; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 800; font-size: 22px; display: grid; place-items: center; }
+  .need h4 { font-size: 24px; line-height: 1.2; }
+  .need p { font-size: 18.5px; line-height: 1.42; color: var(--muted); }
+  .need .kpi { margin-top: auto; font-size: 16.5px; color: var(--accent); font-weight: 650; border-top: 1px dashed var(--line); padding-top: 10px; }
+  .right { display: flex; flex-direction: column; gap: 16px; min-height: 0; }
+  .hero { border-radius: 18px; overflow: hidden; border: 1px solid var(--line); position: relative; }
+  h1 { font-size: 48px; }
+  .problem p { font-size: 21px !important; }
+  .need p { font-size: 17.5px !important; }
+  .hero img { width: 820px; height: 395px; object-fit: cover; }
+  .hero .tag { position: absolute; left: 16px; bottom: 16px; background: rgba(23,32,28,.82); color: #fff; font-size: 19px; padding: 8px 14px; border-radius: 10px; }
+  .thumbs { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .thumbs figure { border-radius: 14px; overflow: hidden; border: 1px solid var(--line); position: relative; }
+  .thumbs img { width: 100%; height: 180px; object-fit: cover; }
+  .thumbs figcaption { position: absolute; left: 10px; bottom: 10px; background: rgba(23,32,28,.82); color: #fff; font-size: 16px; padding: 5px 10px; border-radius: 8px; }
+  .flow { display: flex; align-items: stretch; gap: 0; }
+  .step { flex: 1; background: var(--card); border: 1px solid var(--line); padding: 12px 10px; text-align: center; font-size: 17px; line-height: 1.25; }
+  .step:first-child { border-radius: 12px 0 0 12px; }
+  .step:last-child { border-radius: 0 12px 12px 0; }
+  .step b { display: block; font-size: 15px; color: var(--accent); margin-bottom: 3px; letter-spacing: .05em; }
+  .sol { margin-top: auto; display: grid; grid-template-columns: 1fr auto; gap: 24px; align-items: center; background: var(--accent-soft); border: 1px solid #b9e0d8; border-radius: 18px; padding: 16px 24px; font-size: 18px; line-height: 1.4; }
+  .sol b { display: block; color: var(--accent); font-size: 18px; text-transform: uppercase; letter-spacing: .08em; margin-bottom: 4px; }
+  .sol .res { display: flex; gap: 22px; }
+  .sol .res span { font-size: 16px; color: var(--muted); text-align: center; line-height: 1.2; }
+  .sol .res span b { font-size: 40px; color: var(--ink); text-transform: none; letter-spacing: 0; margin: 0; }
+  .cmd { font-size: 22px; background: var(--ink); color: #fff; padding: 12px 18px; border-radius: 12px; font-family: Consolas, monospace; }
+</style></head>
+<body>
+  <div class="top">
+    <div>
+      <div class="kicker">HomeBot-Sim · Unitree G1 + bàn tay Inspire 5 ngón · mô phỏng MuJoCo</div>
+      <h1>Robot hình người <em>giúp người cao tuổi</em><br>mang đồ ra bồn rửa, an toàn, trong một căn nhà thật</h1>
+    </div>
+    <div class="cmd">"bring the can to the sink"</div>
+  </div>
+
+  <div class="main">
+    <div class="left">
+      <div class="problem">
+        <h3>Pain point</h3>
+        <p>Người cao tuổi và người đi lại khó khăn sống một mình phải tự làm những việc nhỏ lặp lại mỗi ngày, ví dụ mang lon, cốc ra bồn rửa. Mỗi lần đi qua nhà là một lần có nguy cơ ngã, mà không phải lúc nào cũng có người giúp.</p>
+      </div>
+      <h2 style="margin:6px 0 -6px">Robot chỉ có ích nếu làm được cả 3 điều</h2>
+      <div class="needs">
+        <div class="need">
+          <div class="n">1</div>
+          <h4>Làm xong việc trong nhà thật</h4>
+          <p>Bàn ghế bị xê dịch mỗi ngày, đồ vật không ở chỗ cũ, bồn rửa không nằm ở toạ độ lập trình sẵn.</p>
+          <div class="kpi">Đo: tỷ lệ thành công, thời gian (E3, E5)</div>
+        </div>
+        <div class="need">
+          <div class="n">2</div>
+          <h4>An toàn với người sống cùng</h4>
+          <p>Người đi chậm, dừng bất chợt, đứng đúng chỗ robot cần làm việc. Không va chạm khi robot di chuyển, không làm rơi đồ, không ngã.</p>
+          <div class="kpi">Đo: số lần chạm người, khoảng cách, số lần ngã (E1, E3, E4, E5)</div>
+        </div>
+        <div class="need">
+          <div class="n">3</div>
+          <h4>Không lập trình lại cho từng nhà</h4>
+          <p>Robot tự tìm đồ vật và bồn rửa bằng camera của nó, không đọc vị trí từ trình mô phỏng.</p>
+          <div class="kpi">Đo: sai số nhận thức, chạy khi bồn bị dời; chính sách học ACT / Ψ₀ (E2, E3)</div>
+        </div>
+      </div>
+      <div class="sol">
+        <div><b>Giải pháp</b>Robot nhận lệnh bằng lời, tự đi (LiDAR + lập đường + lớp an toàn 50 Hz), tự nhìn (camera RGB-D đầu tìm lon và bồn), tự gắp và thả bằng bàn tay 5 ngón.</div>
+        <div class="res"><span><b>29/30</b>nhiệm vụ trọn vẹn</span><span><b>25/30</b>với người cao tuổi</span><span><b>0</b>lần ngã</span></div>
+      </div>
+    </div>
+
+    <div class="right">
+      <div class="hero">
+        <img src="img_table.png" alt="G1 đứng ở bàn ăn, đưa tay tới lon súp">
+        <div class="tag">Robot đứng ở bàn ăn, camera đầu tìm lon súp YCB, bàn tay Inspire chuẩn bị nắm</div>
+      </div>
+      <div class="thumbs">
+        <figure><img src="img_walk.png" alt="robot đi cạnh người"><figcaption>Đi qua nhà khi có người (trụ đỏ)</figcaption></figure>
+        <figure><img src="img_sink.png" alt="robot thả lon vào bồn"><figcaption>Thả lon vào bồn do camera tìm</figcaption></figure>
+      </div>
+      <div class="flow">
+        <div class="step"><b>1</b>Đi tới bàn ăn</div>
+        <div class="step"><b>2</b>Camera tìm lon</div>
+        <div class="step"><b>3</b>Nắm bằng tiếp xúc ngón</div>
+        <div class="step"><b>4</b>Mang sang bếp</div>
+        <div class="step"><b>5</b>Camera tìm bồn</div>
+        <div class="step"><b>6</b>Thả vào bồn</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span>Mọi thứ đi qua vật lý: chân do chính sách đi bộ học sẵn của Unitree điều khiển, lon chỉ được giữ bằng lực tiếp xúc của ngón tay, vị trí vật lấy từ ảnh camera.</span>
+    <span>1 / 3</span>
+  </div>
+</body></html>

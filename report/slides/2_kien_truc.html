@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>HomeBot-Sim kiến trúc</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { gap: 20px; }
+  .wrap { display: grid; grid-template-columns: 1fr 380px; gap: 26px; flex: 1; min-height: 0; }
+  .core { display: flex; flex-direction: column; gap: 14px; }
+  .row { display: flex; align-items: stretch; gap: 0; }
+  .lane { display: grid; grid-template-columns: 170px 1fr; gap: 14px; align-items: stretch; flex: 1; }
+  .lane .box { font-size: 17px; padding: 14px 15px; }
+  .lane .box b { font-size: 19px; margin-bottom: 5px; }
+  .side .card { flex: 1; }
+  .lane .name { border-radius: 14px; padding: 14px 16px; font-weight: 750; font-size: 20px; line-height: 1.2; display: flex; flex-direction: column; justify-content: center; }
+  .lane .name small { display: block; font-weight: 500; font-size: 15px; margin-top: 6px; opacity: .85; }
+  .nav .name { background: var(--blue-soft); color: var(--blue); }
+  .per .name { background: var(--violet-soft); color: var(--violet); }
+  .man .name { background: var(--accent-soft); color: var(--accent); }
+  .phy .name { background: #ebe7e1; color: #57534e; }
+  .box { flex: 1; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 11px 13px; font-size: 16px; line-height: 1.3; }
+  .box b { display: block; font-size: 17.5px; margin-bottom: 3px; }
+  .box .hz { display: inline-block; font-size: 13px; font-weight: 700; padding: 1px 7px; border-radius: 99px; margin-left: 4px; vertical-align: 2px; }
+  .nav .hz { background: var(--blue-soft); color: var(--blue); }
+  .per .hz { background: var(--violet-soft); color: var(--violet); }
+  .man .hz { background: var(--accent-soft); color: var(--accent); }
+  .ar { width: 26px; display: grid; place-items: center; color: #9aa59f; font-size: 22px; flex: none; }
+  .nav .box { border-top: 4px solid var(--blue); }
+  .per .box { border-top: 4px solid var(--violet); }
+  .man .box { border-top: 4px solid var(--accent); }
+  .phy .box { border-top: 4px solid #a8a29e; }
+  .safety { background: #fff7f5 !important; border-color: #f4c7bf !important; border-top-color: var(--bad) !important; }
+  .safety b { color: var(--bad); }
+  .tr { display: grid; grid-template-columns: 170px 1fr; gap: 14px; }
+  .cmd { background: var(--ink); color: #fff; border-radius: 14px; padding: 14px 16px; font-size: 18px; line-height: 1.3; display: flex; flex-direction: column; justify-content: center; }
+  .cmd code { font-family: Consolas, monospace; font-size: 15.5px; color: #a7f3d0; margin-top: 6px; }
+  .fsm { display: flex; align-items: center; gap: 0; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; }
+  .fsm .t { font-size: 15px; font-weight: 700; color: var(--muted); margin-right: 14px; line-height: 1.25; width: 150px; }
+  .st { padding: 9px 12px; border-radius: 10px; font-family: Consolas, monospace; font-size: 15.5px; font-weight: 700; }
+  .st.n { background: var(--blue-soft); color: var(--blue); }
+  .st.m { background: var(--accent-soft); color: var(--accent); }
+  .fsm .ar { width: 30px; }
+  .policies { display: flex; gap: 6px; margin-top: 6px; }
+  .pol { white-space: nowrap; font-size: 14px; font-weight: 700; padding: 3px 8px; border-radius: 8px; background: var(--accent-soft); color: var(--accent); }
+  .side { display: flex; flex-direction: column; gap: 14px; }
+  .side .card { padding: 18px 20px; }
+  .side h3 { font-size: 19px; margin-bottom: 10px; }
+  .chain { display: flex; flex-direction: column; gap: 6px; }
+  .chain div { font-size: 15.5px; line-height: 1.3; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 11px; }
+  .chain .dn { text-align: center; color: #9aa59f; background: none; border: none; padding: 0; font-size: 16px; line-height: 1; }
+  .legend { font-size: 15px; color: var(--muted); line-height: 1.5; }
+</style></head>
+<body>
+  <div>
+    <div class="kicker">Kiến trúc hệ thống</div>
+    <h1 style="font-size:46px">Một lệnh, hai nhánh: <em>đi an toàn</em> và <em>nhìn, gắp, thả</em>, tất cả chạy qua vật lý</h1>
+  </div>
+
+  <div class="wrap">
+    <div class="core">
+      <div class="tr">
+        <div class="cmd">Lệnh bằng lời<code>"bring the can to the sink"</code></div>
+        <div class="fsm">
+          <div class="t">TaskRunner<br><span style="font-weight:500">máy trạng thái · tasks.py</span></div>
+          <div class="st n">NAVIGATE_TO(table)</div><div class="ar">→</div>
+          <div class="st m">MANIPULATE(pick_cup)</div><div class="ar">→</div>
+          <div class="st n">NAVIGATE_TO(sink)</div><div class="ar">→</div>
+          <div class="st m">MANIPULATE(place_cup)</div>
+        </div>
+      </div>
+
+      <div class="lane nav">
+        <div class="name">Điều hướng<small>homebot/nav, lidar.py</small></div>
+        <div class="row">
+          <div class="box"><b>LiDAR 2D</b>tia quét (mj_multiRay) quanh thân</div><div class="ar">→</div>
+          <div class="box"><b>Bản đồ + theo dõi</b>lưới chiếm chỗ có xoá tia; theo dõi người, thú cưng</div><div class="ar">→</div>
+          <div class="box"><b>A* <span class="hz">1 Hz</span></b>đường toàn cục, chỉ qua khe rộng hơn 4 cm</div><div class="ar">→</div>
+          <div class="box"><b>DWA <span class="hz">10 Hz</span></b>vận tốc cục bộ, cách vật ≥ 5 cm</div><div class="ar">→</div>
+          <div class="box safety"><b>Lớp an toàn <span class="hz" style="background:var(--bad-soft);color:var(--bad)">50 Hz</span></b>dừng &lt; 0,6 m hoặc chạm &lt; 1 s; chậm &lt; 1,2 m; né khi người tiến lại</div>
+        </div>
+      </div>
+
+      <div class="lane per">
+        <div class="name">Nhận thức<small>perception.py · camera đầu RGB-D 320×240</small></div>
+        <div class="row">
+          <div class="box"><b>Lọc thân robot</b>bỏ điểm của tay / bàn tay theo động học</div><div class="ar">→</div>
+          <div class="box"><b>RANSAC mặt đỡ</b>mặt bàn / quầy nằm ngang</div><div class="ar">→</div>
+          <div class="box"><b>Phân cụm</b>điểm cao 1–30 cm trên mặt đỡ</div><div class="ar">→</div>
+          <div class="box"><b>Nhận dạng + 6D</b>ICP so với mô hình YCB (lon, cốc), loại khi RMSE &gt; 4 mm</div><div class="ar">→</div>
+          <div class="box"><b>Kalman</b>mỗi vật một track; <b style="display:inline">bồn rửa</b> = lỗ trũng trên mặt quầy, khớp hình chữ nhật</div>
+        </div>
+      </div>
+
+      <div class="lane man">
+        <div class="name">Thao tác<small>expert.py, policy.py, g1.py</small></div>
+        <div class="row">
+          <div class="box"><b>Căn chỉnh</b>bước tới khi vật nằm trong vùng tay làm việc</div><div class="ar">→</div>
+          <div class="box"><b>Đứng + khoá thân</b>giữ tư thế 1 s rồi cố định chậu</div><div class="ar">→</div>
+          <div class="box" style="flex:1.5"><b>Kỹ năng gắp / thả</b>cùng giao diện <code>pick_cup()</code> / <code>place_cup()</code>
+            <div class="policies"><span class="pol">Expert</span><span class="pol">ACT</span><span class="pol">Ψ₀</span></div></div><div class="ar">→</div>
+          <div class="box"><b>IK tay</b>DLS, cách giới hạn khớp 0,1 rad, ≤ 1,5 rad/s, kiểm tra va chạm đường đi</div><div class="ar">→</div>
+          <div class="box safety"><b>An toàn tay</b>đếm va chạm; lực &gt; 25 N thì dừng tay</div>
+        </div>
+      </div>
+
+      <div class="lane phy">
+        <div class="name">Robot + vật lý<small>MuJoCo 50 Hz · env.py</small></div>
+        <div class="row">
+          <div class="box"><b>Chính sách đi bộ Unitree</b>RL học sẵn (unitree_rl_gym), vòng PI bám vận tốc; giới hạn lệnh khi mang đồ</div><div class="ar">+</div>
+          <div class="box"><b>Unitree G1 29 bậc tự do</b>+ bàn tay Inspire RH56 (6 actuator, khớp mimic)</div><div class="ar">+</div>
+          <div class="box"><b>Căn hộ 8 × 6 m</b>phòng khách, bàn ăn, bếp có bồn sâu 18 cm; ghế xê dịch ±0,3 m mỗi lượt</div><div class="ar">+</div>
+          <div class="box"><b>Người, thú cưng</b>người lớn / người cao tuổi (đi chậm, dừng, do dự); lon súp YCB</div>
+        </div>
+      </div>
+      <div class="legend">Mũi tên = dữ liệu chảy từ cảm biến tới lệnh. Vận tốc từ lớp an toàn → chính sách đi bộ → khớp chân; mục tiêu tay → IK → khớp tay + 6 ngón. Không bước nào đọc vị trí vật từ trình mô phỏng.</div>
+    </div>
+
+    <div class="side">
+      <div class="card">
+        <h3>Dữ liệu và học (Kaggle T4)</h3>
+        <div class="chain">
+          <div>Expert chạy 61 lần, giữ 60 tập thành công</div><div class="dn">↓</div>
+          <div><b>Dataset LeRobot v2.1</b>: 25 828 khung, 2 camera, trạng thái 44-D, hành động 17-D</div><div class="dn">↓</div>
+          <div><b>ACT</b>: 20 000 bước, 58 phút, 1× T4</div>
+          <div><b>Ψ₀</b> (Qwen3-VL-2B + action expert): 300 bước, 2 h 38, 2× T4; phục vụ qua tunnel HTTPS</div><div class="dn">↓</div>
+          <div>Thay expert trong <code>MANIPULATE</code> (<code>--policy act / psi0</code>)</div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>Đánh giá và website</h3>
+        <div class="chain">
+          <div><b>E1–E5</b>: eval_nav / eval_manip / eval_full, chạy song song</div><div class="dn">↓</div>
+          <div>CSV trong <code>results/</code> (765 lượt)</div><div class="dn">↓</div>
+          <div>Website React + FastAPI: bảng KPI, xem lại từng lượt</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer"><span>Nguồn: README.md, report/report.md, homebot/*.py</span><span>2 / 3</span></div>
+</body></html>

@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>HomeBot-Sim kết quả</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { gap: 22px; }
+  .heroes { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+  .hero { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 18px 24px; display: flex; gap: 18px; align-items: center; }
+  .hero .v { font-size: 64px; font-weight: 800; letter-spacing: -.02em; line-height: 1; color: var(--accent); }
+  .hero .v small { font-size: 28px; color: var(--muted); font-weight: 650; }
+  .hero .l { font-size: 19px; line-height: 1.3; }
+  .hero .l span { display: block; color: var(--muted); font-size: 16px; margin-top: 4px; }
+  .grid { display: grid; grid-template-columns: 1.05fr 1fr 1fr; gap: 20px; flex: 1; min-height: 0; }
+  .col { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .col h3 { font-size: 24px; display: flex; align-items: center; gap: 12px; }
+  .col h3 .n { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 19px; display: grid; place-items: center; flex: none; }
+  .col .what { font-size: 16px; color: var(--muted); margin-top: -4px; }
+  .bar { display: grid; grid-template-columns: 210px 1fr 74px; gap: 10px; align-items: center; font-size: 16.5px; }
+  .bar .t { line-height: 1.2; }
+  .bar .t small { display: block; color: var(--muted); font-size: 13.5px; }
+  .track { height: 22px; background: #eef0ec; border-radius: 6px; overflow: hidden; }
+  .fill { height: 100%; background: var(--accent); border-radius: 6px; }
+  .fill.b { background: var(--blue); } .fill.r { background: var(--bad); } .fill.o { background: var(--warn); } .fill.g { background: #8a948f; }
+  .bar .num { font-weight: 750; text-align: right; font-size: 17px; }
+  .sep { border-top: 1px dashed var(--line); margin: 4px 0; }
+  .sub2 { font-size: 15px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .note { margin-top: auto; font-size: 15.5px; line-height: 1.42; background: var(--bg); border-radius: 12px; padding: 12px 14px; }
+  .note b { color: var(--ink); }
+  .pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .stat { background: var(--bg); border-radius: 12px; padding: 12px 14px; }
+  .stat .v { font-size: 34px; font-weight: 800; line-height: 1.05; }
+  .stat .v small { font-size: 17px; color: var(--muted); font-weight: 600; }
+  .stat .l { font-size: 15px; color: var(--muted); line-height: 1.3; margin-top: 3px; }
+  .legend { display: flex; gap: 14px; font-size: 14.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+</style></head>
+<body>
+  <div>
+    <div class="kicker">Kết quả · 765 lượt chạy trong mô phỏng · số liệu từ results/*.csv</div>
+    <h1 style="font-size:46px">Robot hoàn thành <em>29/30</em> nhiệm vụ trọn vẹn khi có người đi lại, <em>không lần ngã nào</em></h1>
+  </div>
+
+  <div class="heroes">
+    <div class="hero"><div class="v">97<small>%</small></div><div class="l">E3 nhiệm vụ trọn vẹn<span>29/30 lượt, có người đi lại, ghế bị dịch</span></div></div>
+    <div class="hero"><div class="v">93<small>%</small></div><div class="l">E3, bồn rửa bị dời ±24 cm<span>28/30, robot không được báo trước</span></div></div>
+    <div class="hero"><div class="v">83<small>%</small></div><div class="l">E5 với người cao tuổi<span>25/30, người đi chậm, dừng, do dự</span></div></div>
+    <div class="hero"><div class="v">0</div><div class="l">lần ngã<span>trên toàn bộ E1–E5, kể cả khi mang lon</span></div></div>
+  </div>
+
+  <div class="grid">
+    <div class="col">
+      <h3><span class="n">1</span>Hoàn thành việc</h3>
+      <div class="what">Tỷ lệ thành công, expert dùng nhận thức camera</div>
+      <div class="sub2">E1 điều hướng A → B (100 lượt / mức)</div>
+      <div class="bar"><div class="t">Mức 1<small>nhà trống</small></div><div class="track"><div class="fill b" style="width:99%"></div></div><div class="num">99%</div></div>
+      <div class="bar"><div class="t">Mức 2<small>có người</small></div><div class="track"><div class="fill b" style="width:94%"></div></div><div class="num">94%</div></div>
+      <div class="bar"><div class="t">Mức 3<small>người + thú cưng</small></div><div class="track"><div class="fill b" style="width:80%"></div></div><div class="num">80%</div></div>
+      <div class="sep"></div>
+      <div class="sub2">E2 gắp / thả (50 lượt mỗi kỹ năng)</div>
+      <div class="bar"><div class="t">Gắp lon</div><div class="track"><div class="fill" style="width:100%"></div></div><div class="num">50/50</div></div>
+      <div class="bar"><div class="t">Thả vào bồn</div><div class="track"><div class="fill" style="width:100%"></div></div><div class="num">50/50</div></div>
+      <div class="bar"><div class="t">Thả, bồn bị dời</div><div class="track"><div class="fill" style="width:100%"></div></div><div class="num">50/50</div></div>
+      <div class="sep"></div>
+      <div class="sub2">E3 / E5 toàn bộ nhiệm vụ (30 lượt)</div>
+      <div class="bar"><div class="t">E3 người lớn<small>181 s trung bình</small></div><div class="track"><div class="fill" style="width:96.7%"></div></div><div class="num">29/30</div></div>
+      <div class="bar"><div class="t">E3 bồn bị dời</div><div class="track"><div class="fill" style="width:93.3%"></div></div><div class="num">28/30</div></div>
+      <div class="bar"><div class="t">E5 người cao tuổi</div><div class="track"><div class="fill o" style="width:83.3%"></div></div><div class="num">25/30</div></div>
+    </div>
+
+    <div class="col">
+      <h3><span class="n">2</span>An toàn với người</h3>
+      <div class="what">Số lần chạm người khi robot đang di chuyển (ít hơn là tốt hơn)</div>
+      <div class="sub2">E4: tắt lớp an toàn 50 Hz (mức 2, 100 lượt)</div>
+      <div class="bar"><div class="t">Có lớp an toàn</div><div class="track"><div class="fill" style="width:26.9%"></div></div><div class="num">7</div></div>
+      <div class="bar"><div class="t">Tắt lớp an toàn</div><div class="track"><div class="fill r" style="width:100%"></div></div><div class="num">26</div></div>
+      <div class="note" style="margin-top:2px">Lớp an toàn giảm <b>73 %</b> số lần chạm người khi đang đi (26 → 7), trong khi tỷ lệ tới đích chỉ đổi từ 99 % xuống 94 %.</div>
+      <div class="sep"></div>
+      <div class="sub2">E3 người lớn so với E5 người cao tuổi (30 lượt)</div>
+      <div class="bar"><div class="t">Người lớn</div><div class="track"><div class="fill" style="width:41.7%"></div></div><div class="num">5</div></div>
+      <div class="bar"><div class="t">Người cao tuổi</div><div class="track"><div class="fill o" style="width:100%"></div></div><div class="num">12</div></div>
+      <div class="pair">
+        <div class="stat"><div class="v">0</div><div class="l">lần ngã, 0 lần rơi lon ở E2</div></div>
+        <div class="stat"><div class="v">25 <small>N</small></div><div class="l">vượt ngưỡng này tay tự dừng (6 lần / 30 lượt E3)</div></div>
+      </div>
+      <div class="note">Với người đi chậm, dừng và do dự, số lần chạm tăng hơn gấp đôi (5 → 12) và thành công giảm 29 → 25 / 30: hướng cải tiến chính là chờ lâu hơn hoặc lùi ra nhường đường.</div>
+    </div>
+
+    <div class="col">
+      <h3><span class="n">3</span>Không hard-code, chính sách học</h3>
+      <div class="what">Robot tự nhìn bằng camera; chính sách học thay expert ở bước gắp / thả</div>
+      <div class="pair">
+        <div class="stat"><div class="v">1,7 <small>mm</small></div><div class="l">sai số vị trí lon (trung vị, E2)</div></div>
+        <div class="stat"><div class="v">1,2 <small>mm</small></div><div class="l">sai số vị trí bồn do camera tìm</div></div>
+      </div>
+      <div class="sep"></div>
+      <div class="sub2">E2 gắp</div>
+      <div class="bar"><div class="t">Expert</div><div class="track"><div class="fill" style="width:100%"></div></div><div class="num">50/50</div></div>
+      <div class="bar"><div class="t">ACT<small>24 M, 58 phút trên T4</small></div><div class="track"><div class="fill b" style="width:58%"></div></div><div class="num">29/50</div></div>
+      <div class="bar"><div class="t">Ψ₀<small>300 bước ≈ 0,2 epoch</small></div><div class="track"><div class="fill g" style="width:0.6%"></div></div><div class="num">0/10</div></div>
+      <div class="sub2" style="margin-top:4px">E2 thả vào bồn</div>
+      <div class="bar"><div class="t">Expert</div><div class="track"><div class="fill" style="width:100%"></div></div><div class="num">50/50</div></div>
+      <div class="bar"><div class="t">ACT</div><div class="track"><div class="fill b" style="width:90%"></div></div><div class="num">45/50</div></div>
+      <div class="bar"><div class="t">Ψ₀</div><div class="track"><div class="fill g" style="width:50%"></div></div><div class="num">5/10</div></div>
+      <div class="note">ACT học từ 60 tập expert và không chạm tay lần nào. Ψ₀ chạy trọn đường ống (dữ liệu → fine-tune → server → mô phỏng) nhưng mới được huấn luyện quá ít để gắp được.</div>
+    </div>
+  </div>
+
+  <div class="footer"><span>E1–E4: expert; E3 bồn dời: sai số bồn trung vị 1,8 mm; ACT trên E3 và GR00T N1.7 chưa đánh giá. Chi tiết: report/report.md</span><span>3 / 3</span></div>
+</body></html>

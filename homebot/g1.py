@@ -58,6 +58,10 @@ ARM_READY = {"shoulder_pitch_joint": -0.2, "shoulder_roll_joint": -0.3, "shoulde
 # HomeEnv._arm_swing); the right arm goes to the ready / carry pose only when the hand has work to do
 ARM_REST = {"shoulder_pitch_joint": 0.15, "shoulder_roll_joint": -0.15, "shoulder_yaw_joint": 0.0,
             "elbow_joint": 0.45, "wrist_roll_joint": 0.0, "wrist_pitch_joint": 0.0, "wrist_yaw_joint": 0.0}
+# idle (left) arm while the robot stands at the table / counter: upper arm back and out, elbow bent, hand beside
+# the hip. From the rest posture the visual-only left hand reached ~9 cm into the counter at the sink
+ARM_TUCK = {"shoulder_pitch_joint": 0.3, "shoulder_roll_joint": -0.2, "shoulder_yaw_joint": 0.0,
+            "elbow_joint": 0.9, "wrist_roll_joint": 0.0, "wrist_pitch_joint": 0.0, "wrist_yaw_joint": 0.0}
 
 
 def _load_inspire(side: str) -> mujoco.MjSpec:
@@ -192,6 +196,7 @@ class G1Controller:
         self.l_ready = np.array([ARM_READY[n.replace("left_", "")] * (-1 if "roll" in n else 1) for n in L_ARM])
         self.r_rest = np.array([ARM_REST[n.replace("right_", "")] for n in R_ARM])
         self.l_rest = np.array([ARM_REST[n.replace("left_", "")] * (-1 if "roll" in n else 1) for n in L_ARM])
+        self.l_tuck = np.array([ARM_TUCK[n.replace("left_", "")] * (-1 if "roll" in n else 1) for n in L_ARM])
         self.l_tgt = self.l_rest.copy()          # left arm joint targets (rest posture + swing while walking)
         self.scratch = mujoco.MjData(m)
         self.q_tgt = self.r_ready.copy()

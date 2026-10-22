@@ -258,11 +258,14 @@ class HomeEnv:
         hand_bodies = {b for b in self.robot_bodies if self.m.body(b).name.startswith("R_")}
         self.hand_geoms = {g for g in range(self.m.ngeom) if self.m.geom_bodyid[g] in hand_bodies}
         self.thumb_geoms = {g for g in self.hand_geoms if "thumb" in self.m.body(int(self.m.geom_bodyid[g])).name}
+        l_hand_bodies = {b for b in self.robot_bodies if self.m.body(b).name.startswith("L_")}
+        self.l_hand_geoms = [g for g in range(self.m.ngeom) if self.m.geom_bodyid[g] in l_hand_bodies]
         self.feet = {bid("left_ankle_roll_link"), bid("right_ankle_roll_link")}
         self.floor = gid("floor")
         counter_parts = {gid("counter" + k) for k in ("_l", "_r", "_f", "_b")}
         self.furniture_geoms = {gid(it.name) for it in self.items} | counter_parts
         self.support_geoms = {gid("dining_table"), gid("counter"), self.floor} | counter_parts
+        self.work_geoms = self.support_geoms - {self.floor}      # where the robot stands close to work
 
         self.occ_true = apt.rasterize(self.items)
         self.sonic = KinematicSonic(CTRL_DT, limits or VelLimits(vx_max=0.5, vy_max=0.2, wz_max=0.8))
@@ -299,6 +302,7 @@ class HomeEnv:
         self.hand_goal_world = None
         self.arm_q_goal = None
         self.stand_mode = False
+        self.l_tucked = False
         self.fingers = g1mod.RELAXED_HAND.copy()
         self.wrist_pos = CARRY_DEFAULT.copy()
         self.wrist_quat = np.array([1.0, 0, 0, 0])
@@ -480,7 +484,14 @@ class HomeEnv:
             self.pet.step(CTRL_DT, self.pose[:2], not self._approaching(self.pet.pos))
         self._apply_mocap()
         swing_r, swing_l = self._arm_swing()
-        self.ctrl.l_tgt = self.ctrl.l_tgt + np.clip(self.ctrl.l_rest + swing_l - self.ctrl.l_tgt,
+        # the left hand has no collision geometry (visual only): tuck the idle arm while working and whenever the
+        # hand comes near the table / counter (stepping in close), with hysteresis so it does not flicker
+        if round(self.t / CTRL_DT) % 5 == 0:     # every 0.1 s (the exact distances cost ~2 ms)
+            near = self._l_hand_clearance(0.25)
+            self.l_tucked = self.stand_mode or near < (0.25 if self.l_tucked else 0.15)
+        self.l_tucked = self.l_tucked or self.stand_mode
+        l_base = self.ctrl.l_tuck if self.l_tucked else self.ctrl.l_rest
+        self.ctrl.l_tgt = self.ctrl.l_tgt + np.clip(l_base + swing_l - self.ctrl.l_tgt,
                                                     -self.ctrl.max_dq, self.ctrl.max_dq)
         if self.arm_q_goal is not None:          # joint-space move planned beforehand (no IK at run time)
             self.ctrl.q_tgt = self.ctrl.q_tgt + np.clip(self.arm_q_goal - self.ctrl.q_tgt, -self.ctrl.max_dq,
@@ -521,6 +532,17 @@ class HomeEnv:
         self.stats["_in_larm"] = bool(nl)
         if self.walker.fallen():
             self.stats["fell"] = True
+
+    def _l_hand_clearance(self, cutoff):
+        """Distance of the (visual-only) left hand to the dining table / counter, capped at `cutoff`."""
+        hand = self.d.xpos[self.m.geom_bodyid[self.l_hand_geoms[0]]]
+        best, ft = cutoff, np.zeros(6)
+        for f in self.work_geoms:
+            if np.linalg.norm(self.d.geom_xpos[f] - hand) - self.m.geom_rbound[f] > cutoff + 0.3:
+                continue                              # far away (bounding sphere): skip the exact distance
+            for g in self.l_hand_geoms:
+                best = min(best, mujoco.mj_geomDistance(self.m, self.d, g, f, best, ft))
+        return best
 
     def _arm_swing(self):
         """Shoulder-pitch offsets (right, left arm vectors) that swing each arm with the opposite leg, as people

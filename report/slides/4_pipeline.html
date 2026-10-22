@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="vi"><head><meta charset="utf-8"><title>HomeBot-Sim pipeline</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { gap: 18px; padding: 48px 64px; }
+  .top { display: grid; grid-template-columns: 300px 1fr; gap: 18px; align-items: stretch; }
+  .cmd { background: var(--ink); color: #fff; border-radius: 16px; padding: 16px 20px; font-size: 19px; line-height: 1.35; }
+  .cmd code { display: block; font-family: Consolas, monospace; color: #a7f3d0; font-size: 18px; margin-top: 6px; }
+  .plan { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 20px; display: flex; align-items: center; gap: 12px; }
+  .plan .t { font-size: 17px; color: var(--muted); width: 210px; line-height: 1.3; }
+  .plan .t b { color: var(--ink); font-size: 19px; display: block; }
+  .s { flex: 1; text-align: center; border-radius: 12px; padding: 10px 6px; font-size: 18px; font-weight: 700; line-height: 1.2; }
+  .s small { display: block; font-weight: 500; font-size: 14.5px; margin-top: 3px; opacity: .85; }
+  .s.n { background: var(--blue-soft); color: var(--blue); }
+  .s.m { background: var(--accent-soft); color: var(--accent); }
+  .arr { color: #9aa59f; font-size: 24px; }
+
+  .loop { display: grid; grid-template-columns: 1fr 300px; gap: 18px; flex: 1; min-height: 0; }
+  .lanes { display: flex; flex-direction: column; gap: 14px; position: relative; }
+  .head { display: grid; grid-template-columns: 150px repeat(4, 1fr); gap: 34px; padding: 0 0 0 0; }
+  .head div { text-align: center; font-size: 16px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .head div:first-child { visibility: hidden; }
+  .lane { display: grid; grid-template-columns: 150px repeat(4, 1fr); gap: 34px; flex: 1; position: relative; }
+  .lane .name { border-radius: 14px; padding: 14px; display: flex; flex-direction: column; justify-content: center; font-size: 22px; font-weight: 800; line-height: 1.15; }
+  .lane .name small { font-size: 14.5px; font-weight: 500; margin-top: 6px; line-height: 1.3; }
+  .walk .name { background: var(--blue-soft); color: var(--blue); }
+  .hand .name { background: var(--accent-soft); color: var(--accent); }
+  .b { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; position: relative; display: flex; flex-direction: column; gap: 6px; }
+  .walk .b { border-top: 5px solid var(--blue); }
+  .hand .b { border-top: 5px solid var(--accent); }
+  .b { padding: 18px 20px; gap: 10px; }
+  .b h4 { font-size: 26px; line-height: 1.15; }
+  .b p { font-size: 20.5px; line-height: 1.42; color: #36413b; }
+  .brains span { font-size: 16px !important; padding: 4px 10px !important; }
+  .phys p { font-size: 19px !important; }
+  .phys .back { font-size: 18px !important; }
+  .b .tech { margin-top: auto; font-size: 15px; color: var(--muted); font-family: Consolas, monospace; }
+  .b:not(:last-child)::after { content: "→"; position: absolute; right: -29px; top: 50%; transform: translateY(-50%); font-size: 26px; color: #9aa59f; }
+  .lane .name::after { content: "→"; position: absolute; left: 157px; top: 50%; transform: translateY(-50%); font-size: 26px; color: #9aa59f; }
+  .b.guard { background: #fff6f4; border-color: #f2c4bc; border-top-color: var(--bad); }
+  .b.guard h4 { color: var(--bad); }
+  .pill { display: inline-block; font-size: 13px; font-weight: 800; padding: 2px 8px; border-radius: 99px; background: var(--bad-soft); color: var(--bad); margin-left: 6px; vertical-align: 3px; }
+  .brains { display: flex; gap: 6px; flex-wrap: wrap; }
+  .brains span { font-size: 13.5px; font-weight: 700; background: var(--accent-soft); color: var(--accent); padding: 2px 8px; border-radius: 8px; }
+
+  .phys { background: #34403a; color: #fff; border-radius: 18px; padding: 20px 22px; display: flex; flex-direction: column; gap: 12px; }
+  .phys h3 { font-size: 24px; }
+  .phys p { font-size: 16.5px; line-height: 1.42; color: #dfe7e2; }
+  .phys .big { font-size: 46px; font-weight: 800; color: #a7f3d0; line-height: 1; }
+  .phys .big small { font-size: 18px; color: #dfe7e2; font-weight: 600; }
+  .phys .back { margin-top: auto; background: rgba(255,255,255,.1); border-radius: 12px; padding: 12px 14px; font-size: 16px; line-height: 1.4; }
+  .phys .back b { color: #a7f3d0; }
+
+  .time { display: grid; grid-template-columns: 210px repeat(5, 1fr); gap: 0; background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .time > div { padding: 12px 14px; font-size: 15.5px; line-height: 1.32; border-right: 1px solid var(--line); }
+  .time > div:last-child { border-right: none; }
+  .time .lab { background: var(--ink); color: #fff; font-weight: 700; font-size: 17px; display: flex; flex-direction: column; justify-content: center; }
+  .time .lab small { font-weight: 500; color: #cbd5d0; font-size: 14px; margin-top: 3px; }
+  .time b { display: block; font-size: 14px; letter-spacing: .06em; margin-bottom: 2px; }
+  .time .w b { color: var(--blue); } .time .h b { color: var(--accent); } .time .r b { color: var(--warn); }
+</style></head>
+<body>
+  <div>
+    <div class="kicker">Pipeline HomeBot-Sim · đọc từ trái sang phải</div>
+    <h1 style="font-size:44px">Robot <em>nhìn → hiểu → quyết định → điều khiển</em>, rồi vật lý trả kết quả về, <em>50 lần mỗi giây</em></h1>
+  </div>
+
+  <div class="top">
+    <div class="cmd">① Người dùng ra lệnh<code>"bring the can to the sink"</code></div>
+    <div class="plan">
+      <div class="t"><b>② Chia việc</b>TaskRunner làm lần lượt 4 bước, bước nào hỏng thì dừng</div>
+      <div class="s n">Đi tới bàn<small>NAVIGATE_TO(table)</small></div><span class="arr">→</span>
+      <div class="s m">Gắp lon<small>MANIPULATE(pick_cup)</small></div><span class="arr">→</span>
+      <div class="s n">Mang sang bếp<small>NAVIGATE_TO(sink)</small></div><span class="arr">→</span>
+      <div class="s m">Thả vào bồn<small>MANIPULATE(place_cup)</small></div>
+    </div>
+  </div>
+
+  <div class="loop">
+    <div class="lanes">
+      <div class="head"><div></div><div>③ Cảm nhận</div><div>④ Hiểu</div><div>⑤ Quyết định</div><div>⑥ Ra lệnh cho cơ thể</div></div>
+
+      <div class="lane walk">
+        <div class="name">Khi ĐI<small>bước xanh dương</small></div>
+        <div class="b"><h4>LiDAR quét quanh</h4><p>Bắn tia ngang 360°, đo khoảng cách tới tường, ghế, người.</p><div class="tech">lidar.py</div></div>
+        <div class="b"><h4>Vẽ bản đồ</h4><p>Ô nào có vật cản; ghế bị dời thì tự xoá. Nhận ra đâu là người đang đi.</p><div class="tech">bản đồ chiếm chỗ + tracker</div></div>
+        <div class="b"><h4>Tìm đường, chọn tốc độ</h4><p>A* vạch đường (1 lần/giây), DWA chọn đi nhanh hay chậm, rẽ ra sao (10 lần/giây).</p><div class="tech">A* · DWA</div></div>
+        <div class="b guard"><h4>Lớp an toàn <span class="pill">50 Hz</span></h4><p>Người &lt; 0,6 m: <b>dừng</b>. &lt; 1,2 m: <b>chậm lại</b>. Người tiến tới: <b>né</b>. Sau đó chân robot <b>bước thật</b> (mạng RL của Unitree).</p></div>
+      </div>
+
+      <div class="lane hand">
+        <div class="name">Khi dùng TAY<small>bước xanh lá</small></div>
+        <div class="b"><h4>Camera trên đầu</h4><p>Chụp ảnh màu + ảnh độ sâu. <b>Không</b> đọc vị trí vật từ mô phỏng.</p><div class="tech">RGB-D 320×240</div></div>
+        <div class="b"><h4>Tìm lon, tìm bồn</h4><p>Tìm mặt bàn, gom điểm nhô lên, so với mô hình 3D lon (sai ~1,7 mm). Bồn = chỗ lõm trên mặt quầy.</p><div class="tech">RANSAC · ICP · Kalman</div></div>
+        <div class="b"><h4>Bộ não gắp / thả</h4><p>Bước tới, đứng vững, nắm lon bằng 5 ngón rồi nhấc; hoặc đưa lon lên bồn rồi mở tay.</p><div class="brains"><span>Expert</span><span>ACT (học)</span><span>Ψ₀ (học)</span></div></div>
+        <div class="b guard"><h4>Tay an toàn</h4><p>IK tính góc 7 khớp tay, kiểm tra va chạm trước khi cử động. Lực &gt; 25 N: <b>tay tự dừng</b>.</p></div>
+      </div>
+    </div>
+
+    <div class="phys">
+      <h3>⑦ Thế giới vật lý (MuJoCo)</h3>
+      <p>Robot G1 29 khớp + bàn tay Inspire. Lon chỉ được giữ bằng <b>ma sát ngón tay</b>, chân phải bước thật nên có lắc, có trôi. Người lớn / người cao tuổi đi lại trong nhà.</p>
+      <div class="big">20 <small>ms mỗi vòng</small></div>
+      <div class="back"><b>↺ Quay lại ③</b><br>Trạng thái mới (robot ở đâu, lon ở đâu, người ở đâu) chính là thứ LiDAR và camera nhìn thấy ở vòng tiếp theo.</div>
+    </div>
+  </div>
+
+  <div class="time">
+    <div class="lab">Một lượt E3<small>khoảng 3 phút mô phỏng</small></div>
+    <div class="w"><b>0–60 s · ĐI</b>Từ phòng khách tới bàn; dừng / né khi người đi ngang</div>
+    <div class="h"><b>60–85 s · GẮP</b>Camera tìm lon, căn chỉnh, đứng vững, nắm và nhấc</div>
+    <div class="w"><b>85–150 s · MANG</b>Khoá tay giữ lon, đi chậm hơn sang bếp</div>
+    <div class="h"><b>150–180 s · THẢ</b>Camera tìm bồn, đứng vuông với quầy, mở tay</div>
+    <div class="r"><b>GHI KẾT QUẢ</b>Thành công? thời gian, chạm người, ngã → 1 dòng CSV → website</div>
+  </div>
+</body></html>

@@ -1,0 +1,36 @@
+:root {
+  --bg: #f6f7f4;
+  --ink: #17201c;
+  --muted: #5d6963;
+  --line: #d9ded8;
+  --card: #ffffff;
+  --accent: #0f766e;
+  --accent-soft: #dff2ee;
+  --warn: #b45309;
+  --warn-soft: #fdf0dc;
+  --bad: #b42318;
+  --bad-soft: #fde7e4;
+  --blue: #1d4ed8;
+  --blue-soft: #e3ebfd;
+  --violet: #6d28d9;
+  --violet-soft: #efe7fd;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", "Be Vietnam Pro", Arial, sans-serif;
+  padding: 56px 72px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.kicker { font-size: 20px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+h1 { font-size: 54px; line-height: 1.12; font-weight: 750; letter-spacing: -.01em; }
+h1 em { font-style: normal; color: var(--accent); }
+.sub { font-size: 24px; color: var(--muted); margin-top: 10px; line-height: 1.4; }
+h2 { font-size: 22px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; margin-bottom: 14px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 24px 28px; }
+.footer { margin-top: auto; display: flex; justify-content: space-between; font-size: 17px; color: var(--muted); }
+img { display: block; }
