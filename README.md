@@ -9,6 +9,22 @@ Everything the robot does goes through the physics: the legs are driven by Unitr
 the object is held only by finger contacts, and the object pose comes from the camera image, not from the
 simulator state.
 
+## The problem it addresses
+
+**Older and mobility-impaired people living at home** need help with small, repetitive chores such as taking a
+used can or cup to the kitchen sink. Each trip across the apartment is a fall risk, and a helper is not always
+around. A home robot is only useful for this if it
+
+1. **gets the job done in a real home**: furniture is moved every day, objects are not where they were last time,
+   the sink is not at a programmed coordinate;
+2. **is safe with the person it lives with**: someone who walks slowly, stops unexpectedly and stands where the
+   robot needs to work; no contact while the robot moves, no dropped objects, no falls;
+3. **needs no programming for each home**: it finds the object and the sink with its own camera.
+
+HomeBot-Sim measures exactly these three properties on a full-size humanoid (Unitree G1 with a dexterous Inspire
+hand) in simulation, including an experiment with an *elderly co-occupant* (E5), and a results website lets a
+caregiver or developer inspect every run.
+
 ## Results (scripted expert with camera perception; full numbers in `report/report.md`)
 
 | experiment | result |
@@ -163,9 +179,27 @@ python scripts/eval_full.py --n 30 --sink-range 0.25 --out results/e3_full_level
 python scripts/carry_bench.py --n 6                        # how much a held object moves in the hand while walking
 ```
 
-Learned policies (Kaggle GPU): `notebooks/kaggle_train_act.ipynb` (ACT, LeRobot), `notebooks/kaggle_finetune_gr00t.ipynb`
-(GR00T N1.7 fine-tune, `configs/gr00t_g1_sonic_inspire.py`), `notebooks/kaggle_eval.ipynb` (E2 with
-`--policy torch:...` / `--policy gr00t`).
+### Learned policies
+
+The classical controller walks the robot up to the table / counter from the perceived can / basin and stands;
+the learned policy then drives the arm and the fingers (`homebot/policy.py`, same `pick_cup()` / `place_cup()`
+interface as the expert).
+
+- **ACT** (`homebot/act.py`, plain PyTorch, 24 M parameters: ResNet-18 on the head + wrist cameras, transformer
+  encoder-decoder, CVAE, chunks of 30 actions, re-planned every 10). Train on Kaggle (1x T4, ~1 h):
+  `notebooks/kaggle_train_act.ipynb` (runs `scripts/train_act.py --pretrained`), download `act_homebot.pt`,
+  evaluate locally on the CPU with the E2 protocol:
+  ```bash
+  python scripts/eval_manip.py --policy act:act_homebot.pt --n 50
+  python scripts/eval_full.py --policy act:act_homebot.pt --n 30
+  ```
+- **Psi0** (VLA for humanoid loco-manipulation, Qwen3-VL-2B + flow action expert, github.com/physical-
+  superintelligence-lab/Psi0): `scripts/export_psi0.py` converts the dataset to Psi0's real-robot format (states 30,
+  actions 34: both hands, both arms, torso, base commands; head camera); `notebooks/kaggle_finetune_psi0.ipynb` is a
+  best-effort fine-tune on 2x T4 (frozen VLM, fp16, small batch - the authors use 8 GPUs in bf16).
+- **GR00T N1.7**: `configs/gr00t_g1_sonic_inspire.py`, `notebooks/kaggle_finetune_gr00t.ipynb`. NVIDIA recommends
+  40+ GB of GPU memory for fine-tuning and 16+ GB for inference, and the backbone is gated on Hugging Face: it does
+  not fit the hardware used here (GTX 1650 4 GB, Kaggle T4 16 GB).
 
 ## Simplifications and limits (read before quoting numbers)
 
@@ -174,8 +208,10 @@ Learned policies (Kaggle GPU): `notebooks/kaggle_train_act.ipynb` (ACT, LeRobot)
 - **Base lock while the hand works.** The walking policy cannot stand still without stepping (the pelvis sways
   ~3 cm per step), so for manipulation the robot holds its pose for ~1 s and then the pelvis is welded in place
   (the same simplification as the HomeHand project); walking resumes after the skill.
-- **GR00T N1.7 / ACT are prepared, not trained here.** The dataset, configs and Kaggle notebooks are provided; the
-  reported manipulation numbers are for the scripted expert (with camera perception).
+- **Learned policies**: the reported E1-E4 numbers are for the scripted expert (with camera perception). ACT
+  training / evaluation and the Psi0 fine-tune run on Kaggle (see Learned policies); GR00T N1.7 needs more GPU
+  memory than available. GEAR-SONIC is not integrated as a separate controller (Psi0 uses it as its lower-body
+  controller in the authors' setup).
 - **E2 drop trials** start from a real contact pick at the table, after which the robot and the held can are moved
   together to the start pose near the sink (test setup only; E3 walks the whole way).
 - **People and the pet** are kinematic boxes (mocap) with simple yielding behaviour; contacts with them are measured

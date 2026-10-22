@@ -5,6 +5,28 @@ MuJoCo (khoảng 8 × 6 m). Nhiệm vụ chính: *"bring the can to the sink"* (
 tìm lon bằng camera, gắp bằng tiếp xúc ngón tay, mang sang bếp và thả vào bồn rửa trong khi có người (và thú cưng)
 đi lại.
 
+## 0. Vấn đề cần giải quyết (pain point)
+
+**Người cao tuổi và người đi lại khó khăn sống tại nhà** cần trợ giúp những việc nhỏ lặp lại hằng ngày như mang lon / cốc
+đã dùng tới bồn rửa. Mỗi lần tự đi qua căn nhà là một nguy cơ té ngã, và không phải lúc nào cũng có người giúp. Một robot
+trong nhà chỉ có ích cho việc này nếu nó **đồng thời**:
+
+1. **làm được việc trong nhà thật**: đồ đạc bị xê dịch hằng ngày, đồ vật không nằm ở chỗ cũ, bồn rửa không ở một tọa độ
+   lập trình sẵn;
+2. **an toàn với người sống cùng**: người đi chậm, dừng bất chợt, đứng đúng chỗ robot cần làm việc — không va chạm khi
+   robot đang đi, không làm rơi đồ, không ngã;
+3. **không cần lập trình lại cho từng ngôi nhà**: tự tìm đồ vật và bồn rửa bằng camera.
+
+Dự án đo đúng ba tính chất này (bảng KPI dưới đây), có thêm thí nghiệm E5 với *người cao tuổi ở cùng nhà*, và một website
+để người chăm sóc / nhà phát triển kiểm tra từng lượt chạy.
+
+| Nhóm | Chỉ số | Thí nghiệm |
+|---|---|---|
+| Hoàn thành việc | Tỷ lệ thành công, thời gian | E3 (ghế dịch, có người), E3 bồn bị dời, E5 |
+| An toàn với người | Số lần chạm khi robot đang đi, khoảng cách nhỏ nhất, ngã | E1, E3, E5; E4 (tắt lớp an toàn) để so sánh |
+| An toàn thiết bị / đồ vật | Số lần dừng tay khi lực > 25 N, rơi vật | E2, E3 |
+| Không hard-code | Sai số nhận thức lon / bồn, thành công khi bồn bị dời; chính sách học (ACT) so với expert | E2, E3 |
+
 ## 1. Hệ thống
 
 | Thành phần | Hiện thực |
@@ -54,6 +76,9 @@ lòng bồn và tay đã nhả.
 | Thả vào bồn (bồn do camera tìm) | **50/50 (100%)** | 1,5 mm (bồn: 1,2 mm) | 29 | 6 | 0 | 0 |
 | Thả, bồn bị dời dọc quầy tới ±24 cm (robot không được báo) | **50/50 (100%)** | 1,6 mm (bồn: 1,2 mm) | 40 | 10 | 0 | 0 |
 
+- **Ψ₀ (Psi0) fine-tune, cùng giao thức, 10 lượt mỗi kỹ năng** (`results/e2_manip_psi0.csv`): gắp **0/10**
+  (209 lần chạm tay, 171 lần dừng tay > 25 N, 1 lần rơi), thả **5/10** (100 chạm, 52 dừng, 4 lần làm rơi lon ngoài
+  bồn), 0 lần ngã. Chi tiết và giới hạn ở mục 4.
 - Lần chạm tay khi thả là các chạm nhẹ (mép quầy / thân robot) lúc đưa tay ra vào. Bộ tìm đường cánh tay phải đi
   vòng ở mọi lượt thả (100 đường thẳng bị loại vì va chạm) và luôn tìm được đường không va chạm. Trước bản sửa
   đường đi cánh tay có một lượt tay tì vào thân robot với lực 104 N (332 lần dừng); sau sửa: 7 lần dừng trên 50 lượt.
@@ -68,6 +93,9 @@ lòng bồn và tay đã nhả.
 | Bồn bị dời dọc quầy tới ±24 cm | **28/30 (93%)** | 188 | 1,8 / 2,3 mm | 12 (7) | 0 | 2 |
 
 Mọi lượt hỏng còn lại là hết giờ (180 s) trên đường tới bồn; không lượt nào làm rơi lon.
+
+Ψ₀ thay expert ở hai bước thao tác (5 lượt, bồn ở chỗ cũ, `results/e3_full_level2_psi0.csv`): **0/5**, cả 5 lượt đi
+tới bàn rồi hỏng ở bước gắp (xem E2 và mục 4).
 
 Số liệu dưới đây là của phiên bản *trước* giai đoạn 1 (bồn lấy từ bản đồ, tay đuổi theo thân khi mang):
 
@@ -124,11 +152,34 @@ Expert (dùng nhận thức camera) thành công 60/61 lần thử; chỉ giữ 
 
 ## 4. Giới hạn (cần đọc trước khi trích dẫn số liệu)
 
-- **Không dùng GEAR-SONIC**: lệnh vận tốc đi vào chính sách đi bộ của Unitree; `sonic_bridge.py` chỉ giới hạn lệnh.
+- **Không dùng GEAR-SONIC làm bộ đi riêng**: lệnh vận tốc đi vào chính sách đi bộ của Unitree; `sonic_bridge.py` chỉ
+  giới hạn lệnh. GEAR-SONIC có bản công khai nhưng triển khai chính bằng C++/TensorRT, nhận chuyển động tham chiếu
+  thay vì lệnh vận tốc; trong thiết lập của tác giả Ψ₀ nó là bộ điều khiển thân dưới của Ψ₀.
 - **Khóa thân khi thao tác**: chính sách đi bộ không đứng yên được (luôn bước tại chỗ), nên khi tay làm việc thân robot
   được giữ cố định (weld) — giống dự án HomeHand.
-- **GR00T N1.7 / ACT chưa được huấn luyện ở đây**: dataset, cấu hình và notebook Kaggle đã sẵn; số liệu thao tác là của
-  expert (dùng nhận thức camera thật).
+- **Chính sách học**: số liệu E1–E4 ở trên là của expert (dùng nhận thức camera thật).
+  - **ACT** (`homebot/act.py`, 24 M tham số, PyTorch thuần): huấn luyện trên Kaggle T4 bằng
+    `notebooks/kaggle_train_act.ipynb`, đánh giá trên máy bằng `--policy act:act_homebot.pt` (cùng giao thức E2/E3).
+    Bộ điều khiển cổ điển đưa robot tới chỗ đứng; chính sách học điều khiển tay và ngón.
+  - **Ψ₀ (Psi0): fine-tune ngắn, E2 gắp 0/10, thả 5/10.** `scripts/export_psi0.py` chuyển phần robot đứng thao tác
+    của `data/homebot_can` sang định dạng dữ liệu real-G1 của Ψ₀ (60 tập, 22 087 khung; trạng thái 30 = hai bàn tay,
+    14 khớp tay, thân; hành động 34 = như trên + lệnh đế, ở đây bằng 0; camera đầu 224×224). Notebook
+    `notebooks/kaggle_finetune_psi0.ipynb` fine-tune từ checkpoint công khai "AMO" của tác giả (Qwen3-VL-2B đóng
+    băng + action expert ~500 M) trên Kaggle 2× T4: attention sdpa, bf16 giả lập (fp16 cho loss `nan` vì Qwen3-VL
+    tràn số), batch 1 × 2 GPU × 8 tích lũy = 16 (batch 2/GPU đạt 14,2/14,6 GiB và hết bộ nhớ khi huấn luyện),
+    **300 bước ≈ 0,2 epoch trong 2 giờ 38 phút**, loss 44,5 → ~4. Tác giả dùng 8 GPU bf16, batch 128, 40 000 bước:
+    mô hình ở đây được huấn luyện ít hơn khoảng 3 bậc độ lớn. Server suy luận `serve_psi0_simple` chạy trên Kaggle,
+    mô phỏng chạy trên máy này qua tunnel; `psi0_client` (`homebot/policy.py`) gửi ảnh camera đầu + trạng thái 30-D và
+    thực thi mục tiêu khớp tay phải + ngón Inspire trong không gian khớp (bộ điều khiển cổ điển vẫn đưa robot tới chỗ
+    đứng, như với ACT). Để vừa thời gian, server chạy với 5 bước flow (tác giả: 10) và thực thi 20 hành động mỗi lần
+    gọi (~3 s mỗi lần gọi, bf16 giả lập trên T4). **E2 (10 lượt mỗi kỹ năng): gắp 0/10**, tay chạm nhiều (209 chạm,
+    171 lần dừng > 25 N); **thả 5/10** (lon đã ở trong tay, gần bồn; 4 lượt làm rơi lon ngoài bồn); 0 lần ngã.
+    **E3 (5 lượt, mức 2): 0/5**, cả 5 lượt đi tới bàn thành công rồi hỏng ở bước gắp
+    (`results/e3_full_level2_psi0.csv`; 71 lần chạm tay, 2 lần chạm người khi robot di chuyển, 0 lần ngã).
+    Kết luận: đường ống Ψ₀ chạy trọn từ dữ liệu → fine-tune → server → mô phỏng, nhưng với lượng huấn luyện vừa
+    phần cứng sẵn có, Ψ₀ chưa học được thao tác gắp; số liệu này không phản ánh Ψ₀ được huấn luyện đầy đủ.
+  - **GR00T N1.7**: NVIDIA khuyến nghị GPU ≥ 40 GB để fine-tune, ≥ 16 GB để suy luận, backbone bị khóa trên Hugging
+    Face — không vừa phần cứng sẵn có (GTX 1650 4 GB, Kaggle T4 16 GB). Cấu hình và notebook vẫn được giữ lại.
 - **E2 phần thả**: bắt đầu bằng một lần gắp thật ở bàn rồi dịch robot + lon tới gần bồn (chỉ để dựng bài thử; E3 đi bộ cả
   quãng).
 - **Người / thú cưng** là khối động học (mocap) với hành vi nhường đơn giản; người cố tình *không bao giờ* nhường robot

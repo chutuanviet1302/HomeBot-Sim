@@ -33,10 +33,10 @@ def living_room_start(env, rng):
 
 
 def run_one(args):
-    seed, level, policy, host, sink_range = args
+    seed, level, policy, host, sink_range, person = args
     rng = np.random.default_rng(70_000 + seed)
     sink_off = float(np.random.default_rng(90_000 + seed).uniform(-sink_range, sink_range)) if sink_range else 0.0
-    env = HomeEnv(level=level, seed=1000 + seed, sink_offset=sink_off)
+    env = HomeEnv(level=level, seed=1000 + seed, sink_offset=sink_off, person_profile=person)
     start = living_room_start(env, rng)
     env.reset(start, robot_route=(start[:2], np.array(apt.PLACES["table"]["pos"])))
     pol = None
@@ -52,7 +52,7 @@ def run_one(args):
             "pet_contacts": r["pet_contacts"], "furniture_contacts": r["furniture_contacts"],
             "min_person_dist": round(float(r["min_person_dist"]), 3), "fell": r["fell"],
             "arm_contacts": r["arm_contacts"], "arm_stops": r["arm_stops"],
-            "left_arm_contacts": r["left_arm_contacts"], "sink_offset": round(sink_off, 3),
+            "left_arm_contacts": r["left_arm_contacts"], "sink_offset": round(sink_off, 3), "person": person,
             "basin_err_mm": r.get("basin_err_mm", float("nan")), "trace": json.dumps(r["trace"])}
 
 
@@ -65,11 +65,13 @@ def main():
     ap.add_argument("--workers", type=int, default=3)   # ~600 MB per G1 + Inspire environment
     ap.add_argument("--sink-range", type=float, default=0.0,
                     help="move the sink along the counter by up to +-this (m) per run (generalisation test)")
+    ap.add_argument("--person", default="adult", choices=["adult", "elderly"],
+                    help="behaviour of the person in the home (E5: elderly co-occupant)")
     ap.add_argument("--out", default=None)
     a = ap.parse_args()
-    jobs = [(s, a.level, a.policy, a.host, a.sink_range) for s in range(a.n)]
+    jobs = [(s, a.level, a.policy, a.host, a.sink_range, a.person) for s in range(a.n)]
     rows = []
-    with Pool(a.workers if a.policy == "expert" else 1, maxtasksperchild=3) as pool:
+    with Pool(1 if a.policy == "gr00t" else a.workers, maxtasksperchild=3) as pool:
         for i, r in enumerate(pool.imap_unordered(run_one, jobs)):
             rows.append(r)
             print(f"{i + 1}/{len(jobs)}", flush=True)

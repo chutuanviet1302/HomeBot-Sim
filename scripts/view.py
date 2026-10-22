@@ -108,7 +108,8 @@ def use_lowpoly_meshes():
 
 def make_env(a):
     rng = np.random.default_rng(70_000 + a.seed)
-    env = HomeEnv(level=a.level, seed=1000 + a.seed)
+    env = HomeEnv(level=a.level, seed=1000 + a.seed, sink_offset=getattr(a, "sink_offset", 0.0),
+                  person_profile=getattr(a, "person", "adult"))
     start = living_room_start(env, rng)
     env.reset(start, robot_route=(start[:2], np.array(apt.PLACES["table"]["pos"])))
     return env, TaskRunner(env)
@@ -145,7 +146,12 @@ def record(a):
 
 
 def cache_path(a):
-    return ROOT / "logs" / f"replay_l{a.level}_s{a.seed}.npz"
+    tag = ""
+    if getattr(a, "person", "adult") != "adult":
+        tag += f"_{a.person}"
+    if getattr(a, "sink_offset", 0.0):
+        tag += f"_sink{a.sink_offset:+.3f}"
+    return ROOT / "logs" / f"replay_l{a.level}_s{a.seed}{tag}.npz"
 
 
 def code_mtime():
@@ -249,6 +255,8 @@ def main():
     ap.add_argument("--seed", type=int, default=2)
     ap.add_argument("--command", default=COMMAND)
     ap.add_argument("--speed", type=float, default=1.0, help="playback speed (1 = real time)")
+    ap.add_argument("--person", default="adult", choices=["adult", "elderly"], help="the person in the home")
+    ap.add_argument("--sink-offset", type=float, default=0.0, help="move the sink along the counter (m)")
     ap.add_argument("--live", action="store_true", help="show the simulation while it runs (may stutter)")
     ap.add_argument("--fresh", action="store_true", help="simulate again even if a recording is cached")
     ap.add_argument("--full-detail", action="store_true", help="draw the original robot meshes")
